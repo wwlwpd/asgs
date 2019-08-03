@@ -6,7 +6,7 @@ export CXX=icpc
 #export CPP=
 
 TMP=$HOME/tmp
-OPT=$HOME/opt/usr
+OPT=${1-$HOME/opt/usr}
 
 export LD_LIBRARY_PATH=$OPT/lib:$LD_LIBRARY_PATH
 export LD_INCLUDE_PATH=$OPT/lib:$LD_INCLUDE_PATH
