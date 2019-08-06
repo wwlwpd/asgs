@@ -15,7 +15,7 @@ echo $OPT
 #2.
 
 echo xxx $LD_LIBRARY_PATH
-
+#"NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=stampede │make[1]: Leaving directory `/home1/06482/estrabd/tmp/netcdf-fortran-4.2' compiler=gfortran"
 make -f ./makefile clean
 make -f ./makefile NETCDFPATH=$OPT $flags
 

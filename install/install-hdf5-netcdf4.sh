@@ -8,6 +8,11 @@ export CXX=icpc
 TMP=$HOME/tmp
 OPT=${1-$HOME/opt/usr}
 
+if [ $OPT == "clean" ]; then
+  echo "clean not implemented yet"
+  exit
+fi
+
 export LD_LIBRARY_PATH=$OPT/lib:$LD_LIBRARY_PATH
 export LD_INCLUDE_PATH=$OPT/lib:$LD_INCLUDE_PATH
 export CPPFLAGS=-I$OPT/include
