@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
 TMP=$HOME/tmp
-OPT=${1-$HOME/opt/usr}
-COMPILER=${2-intel}
+OPT=${1}
+COMPILER=${2}
 
 if [ $2 == "clean" ]; then 
   echo Cleaning HDF5 and NetCDF libraries and utilities
@@ -12,34 +12,30 @@ if [ $2 == "clean" ]; then
   rm -fv libhd5* libhdf5 libnetcdf*
   cd $OPT/include
   rm -fv netcdf* hd5* HD5* hdf*
+  rm -rvf $TMP/hdf5-1.8.12*
+  rm -rvf $TMP/netcdf-4.2.1.1*
+  rm -rvf $TMP//netcdf-fortran-4.2*
   exit
 fi
 
-if [ $COMPILER == "intel" ]; then 
+#if [ $COMPILER == "intel" ]; then 
   export CC=icc
   export FC=ifort
   export CXX=icpc
-fi
-if [ $COMPILER == "gfortran" ]; then 
-  export CC=gcc
-  export FC=gfortran
-  export CXX=g++
-fi
-
-print hi
-
-export LD_LIBRARY_PATH=$OPT/lib:$LD_LIBRARY_PATH
-export LD_INCLUDE_PATH=$OPT/lib:$LD_INCLUDE_PATH
-export CPPFLAGS=-I$OPT/include
-export LDFLAGS=-L$OPT/lib
+#fi
+#if [ $COMPILER == "gfortran" ]; then 
+#  export CC=gcc
+#  export FC=gfortran
+#  export CXX=g++
+#fi
 
 mkdir -p $TMP
 cd $TMP
 
 if [ ! -e hdf5-1.8.12.tar.gz ]; then
-  wget https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/hdf5-1.8.12.tar.gz
-  wget https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/netcdf-4.2.1.1.tar.gz
-  wget https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/netcdf-fortran-4.2.tar.gz
+  wget --verbose https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/hdf5-1.8.12.tar.gz
+  wget --verbose https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/netcdf-4.2.1.1.tar.gz
+  wget --verbose https://asgs-static-assets.sfo2.digitaloceanspaces.com/lib/netcdf-fortran-4.2.tar.gz
 fi
 
 mkdir -p $OPT 2> /dev/null

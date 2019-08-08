@@ -19,9 +19,9 @@ sub run {
     my ( $self, $args_ref ) = @_;
     my $HOME     = ( getpwuid $> )[7];
     my $opts_ref = {
-        compiler     => q{gfortran},
-        install_path => qq{$HOME/opt},
-        home         => $HOME,
+        compiler       => q{gfortran},
+        'install-path' => qq{$HOME/opt},
+        home           => $HOME,
     };
     my $ret = Getopt::Long::GetOptionsFromArray(
         $args_ref,
@@ -31,28 +31,19 @@ sub run {
         q{dump-env},
         q{home},
         q{machinename=s},
-        q{o|output_file=s} => \$opts_ref->{output_file},
-        q{path=s},
+        q{install-path=s},
     );
 
 # TODO - use Validate::Tiny to validate options
-    die                           if not $ret;
+    die if not $ret;
 
     my $start_dir = Cwd::getcwd();
-
-    if ( $opts_ref->{output_file} ) {
-
-        # touch, truncate
-        open my $fh, q{>}, $opts_ref->{output_file} || die $!;
-        close $fh;
-
-        # reminder with helper command to view progress
-        print qq{To see progress, use command:\n\ttail -f $opts_ref->{output_file}\n};
-    }
 
   RUN_STEPS:
     foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
         print $op->{name} . qq{\n};
+
+        # move to specified directory
         chdir $op->{pwd};
 
         # augment ENV based on $op->{export_ENV}
@@ -62,12 +53,11 @@ sub run {
         # defined (i.e., what to do on failure for subsequent runs
         # check is skipped if --clean or --dump-env is passed
         if ( not $self->run_precondition_check ) {
-           die qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
+            die qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
 
         # run command or clean_command (looks for --clean and --dump-env)
-        local $@;
-        my $ok = eval { $self->_run_command( $op, $opts_ref ) };
+        $self->_run_command( $op, $opts_ref );
 
         # verify step completed successfully
         # check is skipped if --clean is passed
@@ -77,6 +67,8 @@ sub run {
         else {
             die qq{post condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
+
+        # go back to the starting directory
         chdir $start_dir;
     }
 
@@ -105,7 +97,7 @@ sub run_postcondition_check {
 sub _run_command {
     my ( $self, $op, $opts_ref ) = @_;
     my $compiler     = $opts_ref->{compiler};
-    my $install_path = $opts_ref->{path};
+    my $install_path = $opts_ref->{'install-path'};
 
     return 1 if $opts_ref->{'dump-env'};
 
@@ -114,18 +106,11 @@ sub _run_command {
 
     local $| = 1;
 
-    # run command, use output capture option
-    if ( $opts_ref->{output_file} ) {
+    require Cwd;    # remove later
+    print Cwd::getcwd;
 
-        # open for appending
-        open my $fh, q{>>}, $opts_ref->{output_file} || die $!;
-        print $fh qq{$command\n};
-        print $fh `$command > $opts_ref->{output_file} 2>&1`;
-    }
-    else {
-        print qq{$command\n};
-        print `$command 2>&1`;
-    }
+    print qq{\n$command\n};
+    system("$command 2>&1");
 
     return 1;
 }
@@ -142,48 +127,45 @@ sub _print_summary {
 
 sub _setup_ENV {
     my ( $self, $op, $opts_ref ) = @_;
-    my $install_path = $opts_ref->{path};
+    my $install_path = $opts_ref->{'install-path'};
   SETUP_ENV:
     foreach my $envar ( keys %{ $op->{export_ENV} } ) {
         ++$affected_ENVs->{$envar};    # track all environmental variables that are touched
-        if ( $ENV{$envar} and not $op->{export_ENV}->{$envar}->{replace} ) {
+        $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
 
-            # prepend
-            my $s = $op->{export_ENV}->{$envar}->{separator};
-            $ENV{$envar} = $op->{export_ENV}->{$envar}->{value} . qq{$s} . $ENV{$envar};
-        }
-        else {
-            # replace
-            $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
-        }
+        #print qq{setting $envar=$ENV{$envar}\n};
     }
     return 1;
 }
 
 # note, user's environment is available via %ENV
+#
+#
+# TODO - add in preconditions, need per step validation of required options/params
 sub get_steps {
     my ( $self, $opts_ref ) = @_;
-    my $install_path = $opts_ref->{path};
+    my $install_path = $opts_ref->{'install-path'};
     my $compiler     = $opts_ref->{compiler};
     my $machinename  = $opts_ref->{machinename};
     return [
         {
             name          => q{NetCDF, HDF5 libraries and utilities},
             pwd           => q{./install},
-            command       => qq{echo hi && install-hdf5-netcdf4.sh $install_path $compiler},
+            command       => qq{install-hdf5-netcdf4.sh $install_path $compiler},
             clean_command => qq{install-hdf5-netcdf4.sh $install_path clean},
+
             # augment existing %ENV
-            export_ENV    => {
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib},       separator => q{:} },
-                LD_INCLUDE_PATH => { value => qq{$install_path/lib},       separator => q{:} },
-                PATH            => { value => qq{$install_path/bin},       separator => q{:} },
-                CPPFLAGS        => { value => qq{-I$install_path/include}, separator => q{ }, replace => 1 },
-                LDFLAGS         => { value => qq{-L$install_path/lib},     separator => q{ }, replace => 1 },
+            export_ENV => {
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib} . q{:} . $ENV{LD_LIBRARY_PATH} },
+                LD_INCLUDE_PATH => { value => qq{$install_path/include} . q{:} . $ENV{LD_INCLUDE_PATH} },
+                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
+                CPPFLAGS        => { value => qq{-I$install_path/include} },
+                LDFLAGS         => { value => qq{-L$install_path/lib} },
             },
-            precondition_check  => sub { 1 },    # must eval to true to proceed
+            precondition_check  => sub { 1 },
             postcondition_check => sub {
-                my ( $op, $install_path ) = @_;
-                my $b = qq{$install_path/bin};
+                my ( $op, $opts_ref ) = @_;
+                my $b = qq{$opts_ref->{'install-path'}/bin};
                 return -e qq{$b/h5diff} && -e qq{$b/nc-config} && -e qq{$b/nf-config};
             },
             descriptions => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
@@ -191,7 +173,7 @@ sub get_steps {
         {
             name                => q{wgrib2},
             pwd                 => q{./},
-            command             => qq{make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
@@ -200,7 +182,7 @@ sub get_steps {
         {
             name                => q{output/cpra_postproc},
             pwd                 => q{./output/cpra_postproc},
-            command             => qq{make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make clean && make NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
@@ -209,7 +191,7 @@ sub get_steps {
         {
             name                => q{output},
             pwd                 => q{./output},
-            command             => qq{make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./netcdf2adcirc.x}; },
@@ -218,7 +200,7 @@ sub get_steps {
         {
             name                => q{util},
             pwd                 => q{./util},
-            command             => qq{make -f makefile NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
@@ -227,7 +209,7 @@ sub get_steps {
         {
             name                => q{util/input/mesh},
             pwd                 => qq{./util/input/mesh},
-            command             => qq{make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./boundaryFinder.x}; },
@@ -236,7 +218,7 @@ sub get_steps {
         {
             name                => q{util/input/nodalattr},
             pwd                 => q{./util/input/nodalattr},
-            command             => qq{make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
@@ -263,7 +245,7 @@ the C<get_steps> subroutine. Steps are processed in the order that they appear.
 
 Options generally reflect those values that are passed on to the various makefiles:
 
-    ./Makefile.pl --path /some/path --machinename <MachineName> --compiler <SomeCompiler> [--home /path/other/than/user/$HOME -o path/to/save/output]
+    ./Makefile.pl --install-path /some/path --machinename <MachineName> --compiler <SomeCompiler> [--home /path/other/than/user/$HOME]
 
 There is also a "clean" mode that will invoke the C<clean_command> for any step that defines it:
 
@@ -296,17 +278,16 @@ The default is set to the effective user's actual home directory, which is the v
 environmental variable $HOME is typically assigned. As with the C<--compiler> flag, this value
 may or may not be used to define some part of a step.
 
+=item C<--install-path>
+
+Equivalent to config's C<--prefix> option, available for use as the main parent directory under
+which to pass to scripts, makefiles, and other commands as the intended home for all of the
+utilities you wish to rehome.
+
 =item C<--machinename>
 
 This option allows one to define the C<machine> name, which is a common value that is used in
 typical ASGS makefiles. It is made available for use when defining a step.
-
-=item C<-o>
-
-By default, the STDOUT and STDERR of a step's C<command> is sent to STDOUT. This default
-provides a typical experience that one has as they watch the actions of a script or makefile
-print to the foreground of an interactive session. Setting C<-o> and defining a path to a
-file will instead write all resulting output of the steps' commands to the file specified.
 
 =back
 
