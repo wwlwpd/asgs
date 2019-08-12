@@ -11,6 +11,10 @@ use constant EXIT_SUCCESS => 0;
 
 # copy existing environment
 local %ENV = %ENV;
+$ENV{LD_LIBRARY_PATH} = q{} if not defined $ENV{LD_LIBRARY_PATH};
+$ENV{LD_INCLUDE_PATH} = q{} if not defined $ENV{LD_INCLUDE_PATH};
+$ENV{PATH}            = q{} if not defined $ENV{PATH};
+
 our $affected_ENVs = {};
 
 exit __PACKAGE__->run( \@ARGV // [] ) if not caller;
@@ -184,18 +188,19 @@ sub get_steps {
     my $install_path = $opts_ref->{'install-path'};
     my $compiler     = $opts_ref->{compiler};
     my $machinename  = $opts_ref->{machinename};
+
     return [
         {
             name          => q{NetCDF, HDF5 libraries and utilities},
             pwd           => q{./install},
-            command       => qq{install-hdf5-netcdf4.sh $install_path $compiler},
-            clean_command => qq{install-hdf5-netcdf4.sh $install_path clean},
+            command       => qq{bash install-hdf5-netcdf4.sh $install_path $compiler},
+            clean_command => qq{bash install-hdf5-netcdf4.sh $install_path clean},
 
             # augment existing %ENV
             export_ENV => {
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib} . q{:} . $ENV{LD_LIBRARY_PATH} },
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib}     . q{:} . $ENV{LD_LIBRARY_PATH} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include} . q{:} . $ENV{LD_INCLUDE_PATH} },
-                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
+                PATH            => { value => qq{$install_path/bin}     . q{:} . $ENV{PATH}            },
                 CPPFLAGS        => { value => qq{-I$install_path/include} },
                 LDFLAGS         => { value => qq{-L$install_path/lib} },
             },
