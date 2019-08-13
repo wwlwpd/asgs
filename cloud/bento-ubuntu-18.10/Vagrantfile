@@ -10,4 +10,5 @@ Vagrant.configure("2") do |config|
   config.vm.provision "file", source: "../general/init-openmpi.sh",  destination: "$HOME/init-openmpi.sh"
   config.vm.provision "file", source: "../general/init-adcirc.sh",   destination: "$HOME/init-adcirc.sh"
   config.vm.provision "file", source: "../general/init-perlbrew.sh", destination: "$HOME/init-perlbrew.sh"
+  config.vm.provision "file", source: "../general/asgs-brew.pl",     destination: "$HOME/asgs-brew.pl"
 end

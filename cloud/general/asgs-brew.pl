@@ -41,6 +41,7 @@ sub run {
         q{clean},
         q{compiler=s},
         q{dump-env},
+        q{force},
         q{home},
         q{machinename=s},
         q{install-path=s},
@@ -52,7 +53,7 @@ sub run {
         print qq{
 Usage:
 
-    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME]
+    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME --force]
 
 Required Flags:
 
@@ -99,6 +100,9 @@ sub _run_steps {
         # augment ENV based on $op->{export_ENV}
         $self->_setup_ENV( $op, $opts_ref );
 
+        # check for skip condition for run step, unless --force is used
+        next RUN_STEPS if ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force};
+
         # precondition checking needs to be more robust and more clearly
         # defined (i.e., what to do on failure for subsequent runs
         # check is skipped if --clean or --dump-env is passed
@@ -127,16 +131,16 @@ sub _run_steps {
 sub _run_precondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-    # skips check if --clean or precondition check doesn't exist in step's definition
-    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not $op->{precondition_check} or $op->{precondition_check}->( $op, $opts_ref );
+    # skips check if --clean or precondition check doesn't exist in step's definition as a CODE ref
+    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not ref $op->{precondition_check} eq q{CODE} or $op->{precondition_check}->( $op, $opts_ref );
     return undef;
 }
 
 sub _run_postcondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-    # skips check if --clean or postcondition check doesn't exist in step's definition
-    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not $op->{postcondition_check} or $op->{postcondition_check}->( $op, $opts_ref );
+    # skips check if --clean or postcondition check doesn't exist in step's definition as a CODE ref
+    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not ref $op->{postcondition_check} eq q{CODE} or $op->{postcondition_check}->( $op, $opts_ref );
     return undef;
 }
 
@@ -198,13 +202,14 @@ sub get_steps {
 
             # augment existing %ENV
             export_ENV => {
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib}     . q{:} . $ENV{LD_LIBRARY_PATH} },
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib} . q{:} . $ENV{LD_LIBRARY_PATH} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include} . q{:} . $ENV{LD_INCLUDE_PATH} },
-                PATH            => { value => qq{$install_path/bin}     . q{:} . $ENV{PATH}            },
+                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
                 CPPFLAGS        => { value => qq{-I$install_path/include} },
                 LDFLAGS         => { value => qq{-L$install_path/lib} },
             },
-            precondition_check  => sub { 1 },    # just a "1" indicates no checking is done
+            skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
+            precondition_check => sub { 1 },    # just a "1" indicates no checking is done
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
@@ -221,6 +226,7 @@ sub get_steps {
             pwd                 => q{./},
             command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                            # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
             descriptions        => q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
@@ -230,6 +236,7 @@ sub get_steps {
             pwd                 => q{./output/cpra_postproc},
             command             => qq{make clean && make NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
             descriptions        => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
@@ -239,6 +246,7 @@ sub get_steps {
             pwd                 => q{./output},
             command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./netcdf2adcirc.x}; },
             descriptions        => q{Runs the makefile and builds all associated utilities in the output/ directory.},
@@ -248,6 +256,7 @@ sub get_steps {
             pwd                 => q{./util},
             command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
             descriptions        => q{Runs the makefile and builds associated utilities in the util/ directory.},
@@ -257,6 +266,7 @@ sub get_steps {
             pwd                 => qq{./util/input/mesh},
             command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./boundaryFinder.x}; },
             descriptions        => q{Runs the makefile and builds associated utilities in the util/input/mesh directory.},
@@ -266,6 +276,7 @@ sub get_steps {
             pwd                 => q{./util/input/nodalattr},
             command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
+            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
             descriptions        => q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
@@ -423,14 +434,25 @@ the command.
 
 Defines the command used to C<clean> a directory tree.
 
-=item C<postcondition_check> 
+=item C<--force>
 
-If this method is private, it is run after C<command>. If it fails, then appropriate.
+Causes the C<skip_if> check to be ignored. Not applied to pre or post condition checks.
+
+=item C<skip_if>
+
+Defines the condition on which the run step can be skipped. This check can be bypassed
+if the C<--force> flag is passed. It is similar in nature to the C<postcondition_check>
+or C<precondition_check>, but has been separated out for the purpose of selectively
+ignoring a run step if desired.
 
 =item C<precondition_check>
 
 If this method is private, it is run before C<command>. If it fails, then appropriate
 action should be taken to fix that.
+
+=item C<postcondition_check>
+
+If this method is private, it is run after C<command>. If it fails, then appropriate.
 
 =back
 
