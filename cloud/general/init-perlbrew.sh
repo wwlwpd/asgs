@@ -47,13 +47,15 @@ which perl          # should be version managed by perlbrew
 
 perlbrew install-cpanm
 which cpanm         # should be the one installed by perlbrew
+cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
 
 #
 #6. Install perl modules (see PERL-MODULES for current list), example (valid at time of this writing)
 #
 
-cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-cpanm Date::Format Date::Handler DateTime DateTime::Format::Builder IO::Socket::SSL HTTP::Tiny List::Util Math::Trig Net::FTP Params::Validate Time::Local
+cpanm Date::Format Date::Handler DateTime DateTime::Format::Builder IO::Socket::SSL HTTP::Tiny List::Util        \
+      Math::Trig Net::FTP Params::Validate Time::Local Email::Sender::Simple Email::Sender::Transport::SMTP::TLS \
+      Email::Simple::Creator Config::Tiny Try::Tiny
 
 # interactive (selects "p" option for "pure pure"), skips testing
 cpanm --force --interactive Date::Pcalc <<EOF

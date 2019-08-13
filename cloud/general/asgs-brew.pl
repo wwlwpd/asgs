@@ -217,8 +217,8 @@ sub get_steps {
 
                 # ANDs together a string of file checks, if any one is missing then $ok is 0
                 my $ok = 1;
-		# TODO - should add full list of expected binaries here
-                map { $ok = -e qq[$bin/$_] && $ok } (qw/mpif90 mpif77/);
+                my @mpi_binaries = (qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/);
+                map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
             descriptions        => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
