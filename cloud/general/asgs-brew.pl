@@ -101,7 +101,10 @@ sub _run_steps {
         $self->_setup_ENV( $op, $opts_ref );
 
         # check for skip condition for run step, unless --force is used
-        next RUN_STEPS if ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force};
+        if ( ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force} ) {
+          print qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
+          next RUN_STEPS;
+	}
 
         # precondition checking needs to be more robust and more clearly
         # defined (i.e., what to do on failure for subsequent runs
@@ -195,16 +198,41 @@ sub get_steps {
 
     return [
         {
-            name          => q{NetCDF, HDF5 libraries and utilities},
-            pwd           => q{./install},
-            command       => qq{bash install-hdf5-netcdf4.sh $install_path $compiler},
-            clean_command => qq{bash install-hdf5-netcdf4.sh $install_path clean},
+            name                => q{OpenMPI 1.8.1 for gfortran},
+            pwd                 => q{./cloud/general},
+            command             => qq{bash init-openmpi.sh $install_path $compiler},
+            clean_command       => qq{bash init-openmpi.sh $install_path clean},
 
-            # augment existing %ENV
+            # augment existing %ENV (cumulative)
+            export_ENV => {
+                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
+            },
+
+	    # skip this step if the compiler is not set to gfortran 
+            skip_if             => sub { return ( $compiler ne q{gfortran} ) ? 1 : 0 },
+            precondition_check  => sub { 1 },
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                my $bin = qq{$opts_ref->{'install-path'}/bin};
+
+                # ANDs together a string of file checks, if any one is missing then $ok is 0
+                my $ok = 1;
+		# TODO - should add full list of expected binaries here
+                map { $ok = -e qq[$bin/$_] && $ok } (qw/mpif90 mpif77/);
+                return $ok;
+            },
+            descriptions        => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
+        },
+        {
+            name          => q{NetCDF, HDF5 libraries and utilities},
+            pwd           => q{./cloud/general},
+            command       => qq{bash init-hdf5-netcdf4.sh $install_path $compiler},
+            clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
+
+            # augment existing %ENV (cumulative)
             export_ENV => {
                 LD_LIBRARY_PATH => { value => qq{$install_path/lib} . q{:} . $ENV{LD_LIBRARY_PATH} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include} . q{:} . $ENV{LD_INCLUDE_PATH} },
-                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
                 CPPFLAGS        => { value => qq{-I$install_path/include} },
                 LDFLAGS         => { value => qq{-L$install_path/lib} },
             },
@@ -443,7 +471,7 @@ Causes the C<skip_if> check to be ignored. Not applied to pre or post condition 
 Defines the condition on which the run step can be skipped. This check can be bypassed
 if the C<--force> flag is passed. It is similar in nature to the C<postcondition_check>
 or C<precondition_check>, but has been separated out for the purpose of selectively
-ignoring a run step if desired.
+ignoring a run step if desired. This check happens BEFORE C<precondition_check>.
 
 =item C<precondition_check>
 
