@@ -1,4 +1,4 @@
-#!/bin/env perl
+#!/usr/bin/perl
 
 use strict;
 use warnings;
@@ -36,14 +36,10 @@ sub run {
         home           => $HOME,
     };
     my $ret = Getopt::Long::GetOptionsFromArray(
-        $args_ref,
-        $opts_ref,
-        q{clean},
-        q{compiler=s},
-        q{dump-env},
-        q{force},
-        q{home},
-        q{machinename=s},
+        $args_ref,   $opts_ref,
+        q{clean},    q{compiler=s},
+        q{dump-env}, q{force},
+        q{home},     q{machinename=s},
         q{install-path=s},
     );
 
@@ -101,16 +97,21 @@ sub _run_steps {
         $self->_setup_ENV( $op, $opts_ref );
 
         # check for skip condition for run step, unless --force is used
-        if ( ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force} ) {
-          print qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
-          next RUN_STEPS;
-	}
+        if (    ref $op->{skip_if} eq q{CODE}
+            and $op->{skip_if}->( $op, $opts_ref )
+            and not $opts_ref->{force} )
+        {
+            print
+qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
+            next RUN_STEPS;
+        }
 
         # precondition checking needs to be more robust and more clearly
         # defined (i.e., what to do on failure for subsequent runs
         # check is skipped if --clean or --dump-env is passed
         if ( not $self->_run_precondition_check ) {
-            die qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
+            die
+qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
 
         # run command or clean_command (looks for --clean and --dump-env)
@@ -119,10 +120,12 @@ sub _run_steps {
         # verify step completed successfully
         # check is skipped if --clean is passed
         if ( $self->_run_postcondition_check( $op, $opts_ref ) ) {
-            print qq{"$op->{name}" was completed successfully\n} unless $opts_ref->{'dump-env'};
+            print qq{"$op->{name}" was completed successfully\n}
+              unless $opts_ref->{'dump-env'};
         }
         else {
-            die qq{post condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
+            die
+qq{post condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
 
         # go back to the starting directory
@@ -134,16 +137,24 @@ sub _run_steps {
 sub _run_precondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-    # skips check if --clean or precondition check doesn't exist in step's definition as a CODE ref
-    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not ref $op->{precondition_check} eq q{CODE} or $op->{precondition_check}->( $op, $opts_ref );
+# skips check if --clean or precondition check doesn't exist in step's definition as a CODE ref
+    return 1
+      if $opts_ref->{'dump-env'}
+      or $opts_ref->{clean}
+      or not ref $op->{precondition_check} eq q{CODE}
+      or $op->{precondition_check}->( $op, $opts_ref );
     return undef;
 }
 
 sub _run_postcondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-    # skips check if --clean or postcondition check doesn't exist in step's definition as a CODE ref
-    return 1 if $opts_ref->{'dump-env'} or $opts_ref->{clean} or not ref $op->{postcondition_check} eq q{CODE} or $op->{postcondition_check}->( $op, $opts_ref );
+# skips check if --clean or postcondition check doesn't exist in step's definition as a CODE ref
+    return 1
+      if $opts_ref->{'dump-env'}
+      or $opts_ref->{clean}
+      or not ref $op->{postcondition_check} eq q{CODE}
+      or $op->{postcondition_check}->( $op, $opts_ref );
     return undef;
 }
 
@@ -155,7 +166,8 @@ sub _run_command {
     return 1 if $opts_ref->{'dump-env'};
 
     # choose command to run
-    my $command = ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
+    my $command =
+      ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
 
     local $| = 1;
 
@@ -168,7 +180,8 @@ sub _run_command {
 sub _print_summary {
     my ( $self, $opts_ref ) = @_;
     return 1 if $opts_ref->{clean};
-    print q{-} x 45 . qq{\nSummary of updated environmental variables (these need to be added to ~/.bash_profile or similar):\n\n};
+    print q{-} x 45
+      . qq{\nSummary of updated environmental variables (these need to be added to ~/.bash_profile or similar):\n\n};
     foreach my $envar ( keys %$affected_ENVs ) {
         printf( qq{export %s=%s\n}, $envar, $ENV{$envar} );
     }
@@ -180,7 +193,8 @@ sub _setup_ENV {
     my $install_path = $opts_ref->{'install-path'};
   SETUP_ENV:
     foreach my $envar ( keys %{ $op->{export_ENV} } ) {
-        ++$affected_ENVs->{$envar};    # track all environmental variables that are touched
+        ++$affected_ENVs->{$envar}
+          ;    # track all environmental variables that are touched
         $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
 
         #print qq{setting $envar=$ENV{$envar}\n};
@@ -195,119 +209,168 @@ sub get_steps {
     my $install_path = $opts_ref->{'install-path'};
     my $compiler     = $opts_ref->{compiler};
     my $machinename  = $opts_ref->{machinename};
+    my $home         = $opts_ref->{home};
 
     return [
         {
-            name                => q{OpenMPI 1.8.1 for gfortran},
-            pwd                 => q{./cloud/general},
-            command             => qq{bash init-openmpi.sh $install_path $compiler},
-            clean_command       => qq{bash init-openmpi.sh $install_path clean},
+            name          => q{Building perlbrew and perl for ASGS},
+            pwd           => q{./},
+            command       => q{bash ./cloud/general/init-perlbrew.sh},
+            clean_command => q{bash ./cloud/general/init-perlbrew.sh clean},
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                return -e qq{$home/perl5/perlbrew/etc/bashrc};
+            },
+            descriptions => q{Installs local Perl environment used for ASGS.}
+        },
+        {
+            name          => q{Building OpenMPI 1.8.1 for gfortran},
+            pwd           => q{./cloud/general},
+            command       => qq{bash init-openmpi.sh $install_path $compiler},
+            clean_command => qq{bash init-openmpi.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                PATH            => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
+                PATH => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
             },
 
-	    # skip this step if the compiler is not set to gfortran 
-            skip_if             => sub { return ( $compiler ne q{gfortran} ) ? 1 : 0 },
+            # skip this step if the compiler is not set to gfortran
+            skip_if => sub { return ( $compiler ne q{gfortran} ) ? 1 : 0 },
             precondition_check  => sub { 1 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
 
-                # ANDs together a string of file checks, if any one is missing then $ok is 0
-                my $ok = 1;
-                my @mpi_binaries = (qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/);
+    # ANDs together a string of file checks, if any one is missing then $ok is 0
+                my $ok           = 1;
+                my @mpi_binaries = (
+                    qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/
+                );
                 map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
-            descriptions        => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
+            descriptions =>
+q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
         },
         {
-            name          => q{NetCDF, HDF5 libraries and utilities},
-            pwd           => q{./cloud/general},
-            command       => qq{bash init-hdf5-netcdf4.sh $install_path $compiler},
+            name    => q{Building NetCDF, HDF5 libraries and utilities},
+            pwd     => q{./cloud/general},
+            command => qq{bash init-hdf5-netcdf4.sh $install_path $compiler},
             clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib} . q{:} . $ENV{LD_LIBRARY_PATH} },
-                LD_INCLUDE_PATH => { value => qq{$install_path/include} . q{:} . $ENV{LD_INCLUDE_PATH} },
-                CPPFLAGS        => { value => qq{-I$install_path/include} },
-                LDFLAGS         => { value => qq{-L$install_path/lib} },
+                LD_LIBRARY_PATH => {
+                    value => qq{$install_path/lib} . q{:}
+                      . $ENV{LD_LIBRARY_PATH}
+                },
+                LD_INCLUDE_PATH => {
+                    value => qq{$install_path/include} . q{:}
+                      . $ENV{LD_INCLUDE_PATH}
+                },
+                CPPFLAGS => { value => qq{-I$install_path/include} },
+                LDFLAGS  => { value => qq{-L$install_path/lib} },
             },
-            skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
-            precondition_check => sub { 1 },    # just a "1" indicates no checking is done
+            skip_if => sub { 0 }
+            , # if true and --force is not used, unilaterally skips the run step
+            precondition_check => sub { 1 }
+            ,    # just a "1" indicates no checking is done
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
 
-                # ANDs together a string of file checks, if any one is missing then $ok is 0
+    # ANDs together a string of file checks, if any one is missing then $ok is 0
                 my $ok = 1;
-                map { $ok = -e qq[$bin/$_] && $ok } (qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/);
+                map { $ok = -e qq[$bin/$_] && $ok }
+                  (
+                    qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/
+                  );
                 return $ok;
             },
-            descriptions => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
+            descriptions =>
+q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
         },
         {
-            name                => q{wgrib2},
-            pwd                 => q{./},
-            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
-            clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                            # if true and --force is not used, unilaterally skips the run step
-            precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
-            descriptions        => q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
+            name => q{Building wgrib2},
+            pwd  => q{./},
+            command =>
+qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+            clean_command      => q{make clean},
+            skip_if            => sub { 0 },
+            precondition_check => sub { 1 },
+            postcondition_check =>
+              sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
+            descriptions =>
+q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
         },
         {
-            name                => q{output/cpra_postproc},
-            pwd                 => q{./output/cpra_postproc},
-            command             => qq{make clean && make NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
-            precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
-            descriptions        => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
+            name => q{Building in output/cpra_postproc},
+            pwd  => q{./output/cpra_postproc},
+            command =>
+qq{make clean && make NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command      => q{make clean},
+            skip_if            => sub { 0 },
+            precondition_check => sub { 1 },
+            postcondition_check =>
+              sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
+            descriptions =>
+q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
         },
         {
-            name                => q{output},
-            pwd                 => q{./output},
-            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            name => q{Building in output/},
+            pwd  => q{./output},
+            command =>
+qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
+            skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./netcdf2adcirc.x}; },
-            descriptions        => q{Runs the makefile and builds all associated utilities in the output/ directory.},
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                return -e qq{./netcdf2adcirc.x};
+            },
+            descriptions =>
+q{Runs the makefile and builds all associated utilities in the output/ directory.},
         },
         {
-            name                => q{util},
-            pwd                 => q{./util},
-            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
-            precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
-            descriptions        => q{Runs the makefile and builds associated utilities in the util/ directory.},
+            name => q{Building in util/},
+            pwd  => q{./util},
+            command =>
+qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command      => q{make clean},
+            skip_if            => sub { 0 },
+            precondition_check => sub { 1 },
+            postcondition_check =>
+              sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
+            descriptions =>
+q{Runs the makefile and builds associated utilities in the util/ directory.},
         },
         {
-            name                => q{util/input/mesh},
-            pwd                 => qq{./util/input/mesh},
-            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            name => q{Building in util/input/mesh},
+            pwd  => qq{./util/input/mesh},
+            command =>
+qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
+            skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./boundaryFinder.x}; },
-            descriptions        => q{Runs the makefile and builds associated utilities in the util/input/mesh directory.},
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                return -e qq{./boundaryFinder.x};
+            },
+            descriptions =>
+q{Runs the makefile and builds associated utilities in the util/input/mesh directory.},
         },
         {
-            name                => q{util/input/nodalattr},
-            pwd                 => q{./util/input/nodalattr},
-            command             => qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command       => q{make clean},
-            skip_if             => sub { 0 },                                                                                                                                                                       # if true and --force is not used, unilaterally skips the run step
-            precondition_check  => sub { 1 },
-            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
-            descriptions        => q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
+            name => q{Building in util/input/nodalattr},
+            pwd  => q{./util/input/nodalattr},
+            command =>
+qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command      => q{make clean},
+            skip_if            => sub { 0 },
+            precondition_check => sub { 1 },
+            postcondition_check =>
+              sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
+            descriptions =>
+q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
         },
     ];
 }
@@ -335,7 +398,7 @@ that are readily available in any environment that perl is also available.
 
 Options generally reflect those values that are passed on to the various makefiles:
 
-    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/$HOME]
+    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/$HOME --force]
 
 Note: C<--install-path> defaults to $HOME/opt.
 
