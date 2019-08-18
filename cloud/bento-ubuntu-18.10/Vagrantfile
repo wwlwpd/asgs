@@ -4,8 +4,8 @@ Vagrant.configure("2") do |config|
      apt-get update
      apt-get install -y build-essential
      apt-get install -y gfortran
-     apt-get install -y --fix-missing libnetcdf-dev libnetcdff-dev
      ln -s /usr/bin/env /bin/env
   SHELL
-  config.vm.provision "file", source: "../general/init-asgs.sh",     destination: "$HOME/init-asgs.sh"
+  config.vm.provision "file", source: "../general/init-asgs.sh",   destination: "$HOME/init-asgs.sh"
+  config.vm.provision "file", source: "../general/README.vagrant", destination: "$HOME/README.vagranth"
 end
