@@ -15,7 +15,8 @@ $ENV{LD_LIBRARY_PATH} = q{} if not defined $ENV{LD_LIBRARY_PATH};
 $ENV{LD_INCLUDE_PATH} = q{} if not defined $ENV{LD_INCLUDE_PATH};
 $ENV{PATH}            = q{} if not defined $ENV{PATH};
 
-our $affected_ENVs = {};
+our $AFFECTED_ENV_VARS = {}; # list of envars that were updated across all steps
+our $DEBUG_SKIP_LIST   = {}; # for debugging only, forces a step's "skip_if" to be true
 
 exit __PACKAGE__->run( \@ARGV // [] ) if not caller;
 
@@ -31,18 +32,15 @@ sub run {
     my ( $self, $args_ref ) = @_;
     my $HOME     = ( getpwuid $> )[7];
     my $opts_ref = {
-        compiler       => q{gfortran},
-        'install-path' => qq{$HOME/opt},
-        home           => $HOME,
-        'make-jobs'    => 1,
+        compiler           => q{gfortran},
+        'install-path'     => qq{$HOME/opt},
+        home               => $HOME,
+        'make-jobs'        => 1,
       
     };
     my $ret = Getopt::Long::GetOptionsFromArray(
         $args_ref,   $opts_ref,
-        q{clean},    q{compiler=s},
-        q{dump-env}, q{force},
-        q{home}, q{install-path=s},
-        q{machinename=s}, q{make-jobs=i},
+        q{clean}, q{compiler=s}, q{debug-skip-steps=s}, q{dump-env}, q{force}, q{home}, q{install-path=s}, q{list-steps}, q{machinename=s}, q{make-jobs=i},
     );
 
     die $@ if not $ret;
@@ -51,7 +49,7 @@ sub run {
         print qq{
 Usage:
 
-    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME --force]
+    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME --force --clean --list-steps --debug-skip-steps]
 
 Required Flags:
 
@@ -69,6 +67,8 @@ More Help and Information:
         exit 255;    # die's exit code
     }
 
+    $self->_process_opts($opts_ref); # additional processing of options
+
     $self->_run_steps($opts_ref);
 
     $self->_run_finalize($opts_ref);
@@ -76,21 +76,40 @@ More Help and Information:
     return EXIT_SUCCESS;
 }
 
-sub _run_finalize {
-    my ( $self, $opts_ref ) = @_;
+sub _process_opts {
+    my ($self, $opts_ref) = @_;
 
-    $self->_print_summary($opts_ref);
+    # add to list of steps to skip - this is to assist in debugging only, not to affect the
+    # flow of the building of ASGS
+    if ($opts_ref->{'debug-skip-steps'}) {
+      for my $step (split ',', $opts_ref->{'debug-skip-steps'}) {
+        ++$DEBUG_SKIP_LIST->{$step};
+      }
+    }
 
-    return 1;
+    return;
 }
 
 sub _run_steps {
     my ( $self, $opts_ref ) = @_;
 
+  LIST_STEPS:
+    if ( $opts_ref->{'list-steps'} ) {
+      foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
+        die q{Steps require a 'key' and a 'description' field for --list-steps to work properly} if not $op->{key} or not $op->{description};
+        print sprintf("% 20s - %s\n", $op->{key}, $op->{description}); 
+      };
+      # proceeds no further if --list-steps is used 
+      return 0;
+    }
+
     my $start_dir = Cwd::getcwd();
   RUN_STEPS:
     foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
         print $op->{name} . qq{\n} unless $opts_ref->{'dump-env'};
+
+	# start in known location (step pwd can be relative)
+        chdir $start_dir;
 
         # move to specified directory
         chdir $op->{pwd};
@@ -99,12 +118,9 @@ sub _run_steps {
         $self->_setup_ENV( $op, $opts_ref );
 
         # check for skip condition for run step, unless --force is used
-        if (    ref $op->{skip_if} eq q{CODE}
-            and $op->{skip_if}->( $op, $opts_ref )
-            and not $opts_ref->{force} )
-        {
-            print
-qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
+	# if op is contained in --debug-skip-steps list then the step is skipped unconditionally (--force is ignored)
+        if ( defined $DEBUG_SKIP_LIST->{$op->{key}} or ( ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force} ) ) {
+            print qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
             next RUN_STEPS;
         }
 
@@ -112,8 +128,7 @@ qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
         # defined (i.e., what to do on failure for subsequent runs
         # check is skipped if --clean or --dump-env is passed
         if ( not $self->_run_precondition_check ) {
-            die
-qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
+            die qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
 
         # run command or clean_command (looks for --clean and --dump-env)
@@ -126,12 +141,8 @@ qq{pre condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
               unless $opts_ref->{'dump-env'};
         }
         else {
-            die
-qq{post condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
+            die qq{post condition for "$op->{name}" FAILED, stopping. Please fix and rerun.\n};
         }
-
-        # go back to the starting directory
-        chdir $start_dir;
     }
     return 1;
 }
@@ -160,6 +171,16 @@ sub _run_postcondition_check {
     return undef;
 }
 
+sub _run_finalize {
+    my ( $self, $opts_ref ) = @_;
+
+    return 1 if $opts_ref->{'list-steps'} or $opts_ref->{'clean'}; # do not show
+
+    $self->_print_summary($opts_ref);
+
+    return 1;
+}
+
 sub _run_command {
     my ( $self, $op, $opts_ref ) = @_;
     my $compiler     = $opts_ref->{compiler};
@@ -168,8 +189,7 @@ sub _run_command {
     return 1 if $opts_ref->{'dump-env'};
 
     # choose command to run
-    my $command =
-      ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
+    my $command = ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
 
     local $| = 1;
 
@@ -182,9 +202,8 @@ sub _run_command {
 sub _print_summary {
     my ( $self, $opts_ref ) = @_;
     return 1 if $opts_ref->{clean};
-    print q{-} x 45
-      . qq{\nSummary of updated environmental variables (these need to be added to ~/.bash_profile or similar):\n\n};
-    foreach my $envar ( keys %$affected_ENVs ) {
+    print q{-} x 45 . qq{\nSummary of updated environmental variables (these need to be added to ~/.bash_profile or similar):\n\n};
+    foreach my $envar ( keys %$AFFECTED_ENV_VARS ) {
         printf( qq{export %s=%s\n}, $envar, $ENV{$envar} );
     }
     return 1;
@@ -195,7 +214,7 @@ sub _setup_ENV {
     my $install_path = $opts_ref->{'install-path'};
   SETUP_ENV:
     foreach my $envar ( keys %{ $op->{export_ENV} } ) {
-        ++$affected_ENVs->{$envar}
+        ++$AFFECTED_ENV_VARS->{$envar}
           ;    # track all environmental variables that are touched
         $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
 
@@ -216,18 +235,33 @@ sub get_steps {
 
     return [
         {
+            key           => q{perlbrew},
             name          => q{Building perlbrew and perl for ASGS},
+            description  => q{Installs local Perl environment used for ASGS.},
             pwd           => q{./},
             command       => q{bash ./cloud/general/init-perlbrew.sh},
             clean_command => q{bash ./cloud/general/init-perlbrew.sh clean},
+
+            # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
+	    # using perl-5.28.2
+            export_ENV => {
+                PATH             => { value  => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin} . q{:} . $ENV{PATH} },
+		PERLBREW_PERL    => { value => q{perl-5.28.2} },
+		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man} },,
+		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:/home/vagrant/perl5/perlbrew/perls/perl-5.28.2/bin} },
+		PERLBREW_HOME    => { value => qq{$home/.perlbrew} },
+		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew} },
+            },
+	    skip_if       => sub { return (-e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl}) ? 1 : 0 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 return -e qq{$home/perl5/perlbrew/etc/bashrc};
             },
-            descriptions => q{Installs local Perl environment used for ASGS.}
         },
         {
+	    key           => q{openmpi},
             name          => q{Building OpenMPI 1.8.1 for gfortran},
+            description   => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
             pwd           => q{./cloud/general},
             command       => qq{bash init-openmpi.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-openmpi.sh $install_path clean},
@@ -238,7 +272,7 @@ sub get_steps {
             },
 
             # skip this step if the compiler is not set to gfortran
-            skip_if => sub { return ( $compiler ne q{gfortran} ) ? 1 : 0 },
+            skip_if => sub { return ( ( $compiler ne q{gfortran} ) or ( -e qq{$install_path/bin/mpif90} )) ? 1 : 0 },
             precondition_check  => sub { 1 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
@@ -252,13 +286,13 @@ sub get_steps {
                 map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
-            descriptions =>
-q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
         },
         {
-            name    => q{Building NetCDF, HDF5 libraries and utilities},
-            pwd     => q{./cloud/general},
-            command => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
+	    key         => q{hdf5-netcdf},
+            name        => q{Building NetCDF, HDF5 libraries and utilities},
+            description => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
+            pwd         => q{./cloud/general},
+            command     => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
@@ -290,40 +324,38 @@ q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is requ
                   );
                 return $ok;
             },
-            descriptions =>
-q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
         },
         {
+	    key  => q{wgrib2},
             name => q{Building wgrib2},
+            description => q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
             pwd  => q{./},
-            command =>
-qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+	    # -j > 1 breaks this makefile
+            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
             postcondition_check =>
               sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
-            descriptions =>
-q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
         },
         {
+	    key  => q{cpra-postproc},
             name => q{Building in output/cpra_postproc},
+            description => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
             pwd  => q{./output/cpra_postproc},
-            command =>
-qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command => qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
-            postcondition_check =>
-              sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
-            descriptions =>
-q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
+            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
         },
         {
+	    key  => q{output},
             name => q{Building in output/},
+            description => q{Runs the makefile and builds associated utilities in the util/ directory.},
             pwd  => q{./output},
-            command =>
-qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+	    # -j > 1 breaks this makefile
+            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -331,24 +363,22 @@ qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF
                 my ( $op, $opts_ref ) = @_;
                 return -e qq{./netcdf2adcirc.x};
             },
-            descriptions =>
-q{Runs the makefile and builds all associated utilities in the output/ directory.},
         },
         {
+	    key  => q{util},
             name => q{Building in util/},
+            description => q{Runs the makefile and builds all associated utilities in the util/ directory.},
             pwd  => q{./util},
-            command =>
-qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
-            postcondition_check =>
-              sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
-            descriptions =>
-q{Runs the makefile and builds associated utilities in the util/ directory.},
+            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
         },
         {
+	    key  => q{input-mesh},
             name => q{Building in util/input/mesh},
+            description => q{Runs the makefile and builds all associated util/input/mesh in the util/ directory.},
             pwd  => qq{./util/input/mesh},
             command =>
 qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
@@ -359,21 +389,19 @@ qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF
                 my ( $op, $opts_ref ) = @_;
                 return -e qq{./boundaryFinder.x};
             },
-            descriptions =>
-q{Runs the makefile and builds associated utilities in the util/input/mesh directory.},
         },
         {
+	    key  => q{input-nodalattr},
             name => q{Building in util/input/nodalattr},
+            description => q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
             pwd  => q{./util/input/nodalattr},
-            command =>
-qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+	    # -j > 1 breaks this makefile
+            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
             postcondition_check =>
               sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
-            descriptions =>
-q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
         },
     ];
 }
@@ -430,6 +458,29 @@ makefiles used by ASGS. The two most common values for this flag are going to be
 and C<intel>.  The step is not required to use this value. It is merely passed along so that
 the C<command> string may have access to the value if it is needed.
 
+=item C<--debug-skip-steps>
+
+This flag is for debugging only so that one may target a specific step, it is not meant for
+the general run case of building up the ASGS environment. It accepts a comma delimited list
+of run step keys (no spaces) to skip. For example, if one wished to skip the C<perlbrew>,
+C<openmpi>, and C<hdf5-netcdf> steps and begin with the C<wgrib2> step - but continue through
+the rest of the list, the flag would be specificed as,
+
+   --debug-skip-steps=perlbrew,openmpi,hdf5-netcdf
+
+To get the list of keys, use the C<--list-keys> option.
+
+=item C<--dump-env>
+
+Runs through each step, but only sets up the environment that is specified (if it is specified).
+It then prints to STDOUT the list of variables and their values in a way that is suitable to be
+used in a bash script.
+
+=item C<--force>
+
+If used, the C<skip_if> defined for a step (if defined) is not run. C<--debug-skip-steps> is
+checked before C<--force> and therefore overrides it.
+
 =item C<--home>
 
 The default is set to the effective user's actual home directory, which is the value that the
@@ -442,10 +493,22 @@ Equivalent to config's C<--prefix> option, available for use as the main parent 
 which to pass to scripts, makefiles, and other commands as the intended home for all of the
 utilities you wish to rehome.
 
+=item C<--list-steps>
+
+Prints a nice listing of each step's key (in order of execution) and the description. It then
+exits, doing nothing else. It's handy when using C<--debug-skip-steps> since this option takes
+a list of keys to skip.
+
 =item C<--machinename>
 
 This option allows one to define the C<machine> name, which is a common value that is used in
 typical ASGS makefiles. It is made available for use when defining a step.
+
+=item C<--make-jobs>
+
+Provides a way to specify the the level of concurrency one may use with a makefile when defining
+the command in a step. Some makefiles are not properly able to use this option, so it is optionally
+used when defining the step command itself.
 
 =back
 
@@ -505,6 +568,16 @@ The defined C<keys> to define when adding a step are as follow,
 
 =over 3
 
+=item C<key>
+
+Unique key that is meant to unambiguously refer to the step in options that may accept
+a list of steps. For example, it's required for using the C<--list-steps> flag.
+
+=item C<description>
+
+Provides a fair, short summary of the step. Required for the C<--list-steps> flag to
+act appropriately.
+
 =item C<name>
 
 Short name for the step, doesn't have to be unique across steps and runs, but it's good
@@ -527,10 +600,6 @@ the command.
 =item C<clean_command> 
 
 Defines the command used to C<clean> a directory tree.
-
-=item C<--force>
-
-Causes the C<skip_if> check to be ignored. Not applied to pre or post condition checks.
 
 =item C<skip_if>
 
