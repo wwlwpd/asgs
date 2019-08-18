@@ -1,11 +1,15 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-18.10"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+    vb.cpus = "2"
+  end
   config.vm.provision "shell", inline: <<-SHELL
      apt-get update
      apt-get install -y build-essential
      apt-get install -y gfortran
-     ln -s /usr/bin/env /bin/env
+     ln -s /usr/bin/env /bin/env > /dev/null || echo /usr/bin/env already links to /bin/env
   SHELL
   config.vm.provision "file", source: "../general/init-asgs.sh",   destination: "$HOME/init-asgs.sh"
-  config.vm.provision "file", source: "../general/README.vagrant", destination: "$HOME/README.vagranth"
+  config.vm.provision "file", source: "../general/README.vagrant", destination: "$HOME/README.vagrant"
 end

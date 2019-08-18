@@ -3,6 +3,7 @@
 TMP=$HOME/tmp
 OPT=${1-$HOME/opt}
 COMPILER=${2-intel}
+JOBS=${3-1}
 
 OPENMPI_VERSION=openmpi-1.8.1
 
@@ -49,5 +50,5 @@ tar -xvf $OPENMPI_VERSION.tar.gz
 cd $OPENMPI_VERSION 
 
 ./configure --prefix=$OPT
-make
-make install
+make -j $JOBS
+make -j $JOBS install

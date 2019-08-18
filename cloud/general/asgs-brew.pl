@@ -34,13 +34,15 @@ sub run {
         compiler       => q{gfortran},
         'install-path' => qq{$HOME/opt},
         home           => $HOME,
+        'make-jobs'    => 1,
+      
     };
     my $ret = Getopt::Long::GetOptionsFromArray(
         $args_ref,   $opts_ref,
         q{clean},    q{compiler=s},
         q{dump-env}, q{force},
-        q{home},     q{machinename=s},
-        q{install-path=s},
+        q{home}, q{install-path=s},
+        q{machinename=s}, q{make-jobs=i},
     );
 
     die $@ if not $ret;
@@ -208,8 +210,9 @@ sub get_steps {
     my ( $self, $opts_ref ) = @_;
     my $install_path = $opts_ref->{'install-path'};
     my $compiler     = $opts_ref->{compiler};
-    my $machinename  = $opts_ref->{machinename};
     my $home         = $opts_ref->{home};
+    my $machinename  = $opts_ref->{machinename};
+    my $makejobs     = $opts_ref->{'make-jobs'};
 
     return [
         {
@@ -226,7 +229,7 @@ sub get_steps {
         {
             name          => q{Building OpenMPI 1.8.1 for gfortran},
             pwd           => q{./cloud/general},
-            command       => qq{bash init-openmpi.sh $install_path $compiler},
+            command       => qq{bash init-openmpi.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-openmpi.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
@@ -255,7 +258,7 @@ q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is requ
         {
             name    => q{Building NetCDF, HDF5 libraries and utilities},
             pwd     => q{./cloud/general},
-            command => qq{bash init-hdf5-netcdf4.sh $install_path $compiler},
+            command => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
@@ -294,7 +297,7 @@ q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to 
             name => q{Building wgrib2},
             pwd  => q{./},
             command =>
-qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
@@ -307,7 +310,7 @@ q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is requi
             name => q{Building in output/cpra_postproc},
             pwd  => q{./output/cpra_postproc},
             command =>
-qq{make clean && make NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
@@ -320,7 +323,7 @@ q{Runs the makefile and builds associated utilities in the output/cpra_postproc 
             name => q{Building in output/},
             pwd  => q{./output},
             command =>
-qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -335,7 +338,7 @@ q{Runs the makefile and builds all associated utilities in the output/ directory
             name => q{Building in util/},
             pwd  => q{./util},
             command =>
-qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
@@ -348,7 +351,7 @@ q{Runs the makefile and builds associated utilities in the util/ directory.},
             name => q{Building in util/input/mesh},
             pwd  => qq{./util/input/mesh},
             command =>
-qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -363,7 +366,7 @@ q{Runs the makefile and builds associated utilities in the util/input/mesh direc
             name => q{Building in util/input/nodalattr},
             pwd  => q{./util/input/nodalattr},
             command =>
-qq{make clean && make NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
