@@ -233,31 +233,7 @@ sub get_steps {
     my $machinename  = $opts_ref->{machinename};
     my $makejobs     = $opts_ref->{'make-jobs'};
 
-    return [
-        {
-            key           => q{perlbrew},
-            name          => q{Building perlbrew and perl for ASGS},
-            description  => q{Installs local Perl environment used for ASGS.},
-            pwd           => q{./},
-            command       => q{bash ./cloud/general/init-perlbrew.sh},
-            clean_command => q{bash ./cloud/general/init-perlbrew.sh clean},
-
-            # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
-	    # using perl-5.28.2
-            export_ENV => {
-                PATH             => { value  => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin} . q{:} . $ENV{PATH} },
-		PERLBREW_PERL    => { value => q{perl-5.28.2} },
-		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man} },,
-		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:/home/vagrant/perl5/perlbrew/perls/perl-5.28.2/bin} },
-		PERLBREW_HOME    => { value => qq{$home/.perlbrew} },
-		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew} },
-            },
-	    skip_if       => sub { return (-e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl}) ? 1 : 0 },
-            postcondition_check => sub {
-                my ( $op, $opts_ref ) = @_;
-                return -e qq{$home/perl5/perlbrew/etc/bashrc};
-            },
-        },
+    my $steps = [
         {
 	    key           => q{openmpi},
             name          => q{Building OpenMPI 1.8.1 for gfortran},
@@ -277,8 +253,6 @@ sub get_steps {
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
-
-    # ANDs together a string of file checks, if any one is missing then $ok is 0
                 my $ok           = 1;
                 my @mpi_binaries = (
                     qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/
@@ -315,8 +289,6 @@ sub get_steps {
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
-
-    # ANDs together a string of file checks, if any one is missing then $ok is 0
                 my $ok = 1;
                 map { $ok = -e qq[$bin/$_] && $ok }
                   (
@@ -380,8 +352,7 @@ sub get_steps {
             name => q{Building in util/input/mesh},
             description => q{Runs the makefile and builds all associated util/input/mesh in the util/ directory.},
             pwd  => qq{./util/input/mesh},
-            command =>
-qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -400,10 +371,34 @@ qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF
             clean_command      => q{make clean},
             skip_if            => sub { 0 },
             precondition_check => sub { 1 },
-            postcondition_check =>
-              sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
+            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
+        },
+        {
+            key           => q{perlbrew},
+            name          => q{Building perlbrew and perl for ASGS},
+            description  => q{Installs local Perl environment used for ASGS.},
+            pwd           => q{./},
+            command       => q{bash ./cloud/general/init-perlbrew.sh},
+            clean_command => q{bash ./cloud/general/init-perlbrew.sh clean},
+
+            # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
+	    # using perl-5.28.2
+            export_ENV => {
+                PATH             => { value  => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin} . q{:} . $ENV{PATH} },
+		PERLBREW_PERL    => { value => q{perl-5.28.2} },
+		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man} },,
+		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:/home/vagrant/perl5/perlbrew/perls/perl-5.28.2/bin} },
+		PERLBREW_HOME    => { value => qq{$home/.perlbrew} },
+		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew} },
+            },
+	    skip_if       => sub { return (-e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl}) ? 1 : 0 },
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                return -e qq{$home/perl5/perlbrew/etc/bashrc};
+            },
         },
     ];
+    return $steps;
 }
 
 1;

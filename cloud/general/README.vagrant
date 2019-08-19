@@ -1,3 +1,16 @@
+       d8888      .d8888b.       .d8888b.       .d8888b.
+      d88888     d88P  Y88b     d88P  Y88b     d88P  Y88b
+     d88P888     Y88b.          888    888     Y88b.
+    d88P 888      "Y888b.       888             "Y888b.
+   d88P  888         "Y88b.     888  88888         "Y88b.
+  d88P   888           "888     888    888           "888
+ d8888888888     Y88b  d88P     Y88b  d88P     Y88b  d88P
+d88P     888      "Y8888P"       "Y8888P88      "Y8888P"
+
+ d888b  d88  d888b  d88  d888b  d88  d888b  d88  d888b  d88
+d888888888P d888888888P d888888888P d888888888P d888888888P
+88P  Y888P  88P  Y888P  88P  Y888P  88P  Y888P  88P  Y888P
+
 NOTICE:
 
 This README is meant to provide instructions for the user once they
@@ -43,3 +56,9 @@ the parallel versions of adcirc and swan
 After this has been completed successfully, the user should be ready to
 run ASGS, assuming they have a working ASGS configuration file and all input
 files located in the proper directories.
+
+To see this notice again,
+
+  cat $HOME/README.vagrant # or open it up in an editor
+
+Hit 'q' for the shell.
