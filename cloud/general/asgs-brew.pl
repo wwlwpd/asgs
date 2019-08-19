@@ -11,9 +11,6 @@ use constant EXIT_SUCCESS => 0;
 
 # copy existing environment
 local %ENV = %ENV;
-$ENV{LD_LIBRARY_PATH} = q{} if not defined $ENV{LD_LIBRARY_PATH};
-$ENV{LD_INCLUDE_PATH} = q{} if not defined $ENV{LD_INCLUDE_PATH};
-$ENV{PATH}            = q{} if not defined $ENV{PATH};
 
 our $AFFECTED_ENV_VARS = {}; # list of envars that were updated across all steps
 our $DEBUG_SKIP_LIST   = {}; # for debugging only, forces a step's "skip_if" to be true
@@ -214,10 +211,18 @@ sub _setup_ENV {
     my $install_path = $opts_ref->{'install-path'};
   SETUP_ENV:
     foreach my $envar ( keys %{ $op->{export_ENV} } ) {
-        ++$AFFECTED_ENV_VARS->{$envar}
-          ;    # track all environmental variables that are touched
-        $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
+        ++$AFFECTED_ENV_VARS->{$envar};    # track all environmental variables that are touched
 
+	# default "how" mode is to prepend if the envar is already defined
+	if ( not defined $op->{export_ENV}->{$envar}->{how} or $op->{export_ENV}->{$envar}->{how} eq q{prepend} ) {
+          $ENV{$envar} = sprintf("%s%s", $op->{export_ENV}->{$envar}->{value}, ( $ENV{$envar} ) ? q{:} . $ENV{$envar} : q{});
+	}
+	elsif ( $op->{export_ENV}->{$envar}->{how} eq q{append} ) {
+          $ENV{$envar} = sprintf("%s%s",  ( $ENV{$envar} ) ? $ENV{$envar} . q{:} : q{}, $op->{export_ENV}->{$envar}->{value} );
+	}
+	elsif ( $op->{export_ENV}->{$envar}->{how} eq q{replace} ) {
+          $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
+	}
         #print qq{setting $envar=$ENV{$envar}\n};
     }
     return 1;
@@ -244,7 +249,7 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                PATH => { value => qq{$install_path/bin} . q{:} . $ENV{PATH} },
+                PATH => { value => qq{$install_path/bin}, how => q{prepend} },
             },
 
             # skip this step if the compiler is not set to gfortran
@@ -254,9 +259,7 @@ sub get_steps {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
                 my $ok           = 1;
-                my @mpi_binaries = (
-                    qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/
-                );
+                my @mpi_binaries = ( qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/);
                 map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
@@ -271,16 +274,9 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                LD_LIBRARY_PATH => {
-                    value => qq{$install_path/lib} . q{:}
-                      . $ENV{LD_LIBRARY_PATH}
-                },
-                LD_INCLUDE_PATH => {
-                    value => qq{$install_path/include} . q{:}
-                      . $ENV{LD_INCLUDE_PATH}
-                },
-                CPPFLAGS => { value => qq{-I$install_path/include} },
-                LDFLAGS  => { value => qq{-L$install_path/lib} },
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib}, how => q{prepend} },
+                LD_INCLUDE_PATH => { value => qq{$install_path/include}, how => q{prepend} },
+                NETCDFHOME  => { value => qq{$install_path}, how => q{replace} },
             },
             skip_if => sub { 0 }
             , # if true and --force is not used, unilaterally skips the run step
@@ -290,9 +286,7 @@ sub get_steps {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
                 my $ok = 1;
-                map { $ok = -e qq[$bin/$_] && $ok }
-                  (
-                    qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/
+                map { $ok = -e qq[$bin/$_] && $ok } ( qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/
                   );
                 return $ok;
             },
@@ -384,12 +378,12 @@ sub get_steps {
             # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
 	    # using perl-5.28.2
             export_ENV => {
-                PATH             => { value  => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin} . q{:} . $ENV{PATH} },
-		PERLBREW_PERL    => { value => q{perl-5.28.2} },
-		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man} },,
-		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:/home/vagrant/perl5/perlbrew/perls/perl-5.28.2/bin} },
-		PERLBREW_HOME    => { value => qq{$home/.perlbrew} },
-		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew} },
+                PATH             => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
+		PERLBREW_PERL    => { value => q{perl-5.28.2}, how => q{replace} },
+		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man}, how => q{prepend} },
+		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
+		PERLBREW_HOME    => { value => qq{$home/.perlbrew}, how => q{replace} },
+		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew}, how => q{replace} },
             },
 	    skip_if       => sub { return (-e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl}) ? 1 : 0 },
             postcondition_check => sub {
@@ -535,10 +529,6 @@ are updated in %ENV:
 
 =item PATH           
 
-=item CPPFLAGS       
-
-=item LDFLAGS        
-
 =back
 
 =head2 Exporting The Environment
@@ -591,6 +581,23 @@ Options can be added easily to the arguments list of asgs-brew.pl, but the gener
 of thumb should be that the options be kept to a minimum. Most of the complexity associated
 with a step should be hidden within the step's makefile, script, or program supporting
 the command.
+
+=item C<export_ENV>
+
+Environmental variables affect a great number of things in this space, so it is important
+to be able to manage them as each step completes. Each step may define any number of environmental
+variables and how they should be updated. 
+
+Below is an example used for the C<hdf5-netcdf> step. This example demonstrates which variables
+to update, with what value, and how.
+
+    export_ENV => {
+	LD_LIBRARY_PATH => { value => qq{$install_path/lib},     how => q{prepend} },
+	LD_INCLUDE_PATH => { value => qq{$install_path/include}, how => q{prepend} },
+	NETCDFHOME      => { value => qq{$install_path},         how => q{replace} },
+    },
+
+Options for C<how> include: C<prepend> (default if not defined), C<append>, and C<replace>.
 
 =item C<clean_command> 
 
