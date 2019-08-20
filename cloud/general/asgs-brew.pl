@@ -12,8 +12,8 @@ use constant EXIT_SUCCESS => 0;
 # copy existing environment
 local %ENV = %ENV;
 
-our $AFFECTED_ENV_VARS = {}; # list of envars that were updated across all steps
-our $DEBUG_SKIP_LIST   = {}; # for debugging only, forces a step's "skip_if" to be true
+our $AFFECTED_ENV_VARS = {};    # list of envars that were updated across all steps
+our $DEBUG_SKIP_LIST   = {};    # for debugging only, forces a step's "skip_if" to be true
 
 exit __PACKAGE__->run( \@ARGV // [] ) if not caller;
 
@@ -29,14 +29,14 @@ sub run {
     my ( $self, $args_ref ) = @_;
     my $HOME     = ( getpwuid $> )[7];
     my $opts_ref = {
-        compiler           => q{gfortran},
-        'install-path'     => qq{$HOME/opt},
-        home               => $HOME,
-        'make-jobs'        => 1,
-      
+        compiler       => q{gfortran},
+        'install-path' => qq{$HOME/opt},
+        home           => $HOME,
+        'make-jobs'    => 1,
+
     };
     my $ret = Getopt::Long::GetOptionsFromArray(
-        $args_ref,   $opts_ref,
+        $args_ref, $opts_ref,
         q{clean}, q{compiler=s}, q{debug-skip-steps=s}, q{dump-env}, q{force}, q{home}, q{install-path=s}, q{list-steps}, q{machinename=s}, q{make-jobs=i},
     );
 
@@ -64,7 +64,7 @@ More Help and Information:
         exit 255;    # die's exit code
     }
 
-    $self->_process_opts($opts_ref); # additional processing of options
+    $self->_process_opts($opts_ref);    # additional processing of options
 
     $self->_run_steps($opts_ref);
 
@@ -74,14 +74,14 @@ More Help and Information:
 }
 
 sub _process_opts {
-    my ($self, $opts_ref) = @_;
+    my ( $self, $opts_ref ) = @_;
 
     # add to list of steps to skip - this is to assist in debugging only, not to affect the
     # flow of the building of ASGS
-    if ($opts_ref->{'debug-skip-steps'}) {
-      for my $step (split ',', $opts_ref->{'debug-skip-steps'}) {
-        ++$DEBUG_SKIP_LIST->{$step};
-      }
+    if ( $opts_ref->{'debug-skip-steps'} ) {
+        for my $step ( split ',', $opts_ref->{'debug-skip-steps'} ) {
+            ++$DEBUG_SKIP_LIST->{$step};
+        }
     }
 
     return;
@@ -92,12 +92,13 @@ sub _run_steps {
 
   LIST_STEPS:
     if ( $opts_ref->{'list-steps'} ) {
-      foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
-        die q{Steps require a 'key' and a 'description' field for --list-steps to work properly} if not $op->{key} or not $op->{description};
-        print sprintf("% 20s - %s\n", $op->{key}, $op->{description}); 
-      };
-      # proceeds no further if --list-steps is used 
-      return 0;
+        foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
+            die q{Steps require a 'key' and a 'description' field for --list-steps to work properly} if not $op->{key} or not $op->{description};
+            print sprintf( "% 20s - %s\n", $op->{key}, $op->{description} );
+        }
+
+        # proceeds no further if --list-steps is used
+        return 0;
     }
 
     my $start_dir = Cwd::getcwd();
@@ -105,7 +106,7 @@ sub _run_steps {
     foreach my $op ( @{ $self->get_steps($opts_ref) } ) {
         print $op->{name} . qq{\n} unless $opts_ref->{'dump-env'};
 
-	# start in known location (step pwd can be relative)
+        # start in known location (step pwd can be relative)
         chdir $start_dir;
 
         # move to specified directory
@@ -115,8 +116,8 @@ sub _run_steps {
         $self->_setup_ENV( $op, $opts_ref );
 
         # check for skip condition for run step, unless --force is used
-	# if op is contained in --debug-skip-steps list then the step is skipped unconditionally (--force is ignored)
-        if ( defined $DEBUG_SKIP_LIST->{$op->{key}} or ( ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force} ) ) {
+        # if op is contained in --debug-skip-steps list then the step is skipped unconditionally (--force is ignored)
+        if ( defined $DEBUG_SKIP_LIST->{ $op->{key} } or ( ref $op->{skip_if} eq q{CODE} and $op->{skip_if}->( $op, $opts_ref ) and not $opts_ref->{force} ) ) {
             print qq{Skipping $op->{name} because 'skip_if' condition has been met.\n};
             next RUN_STEPS;
         }
@@ -147,7 +148,7 @@ sub _run_steps {
 sub _run_precondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-# skips check if --clean or precondition check doesn't exist in step's definition as a CODE ref
+    # skips check if --clean or precondition check doesn't exist in step's definition as a CODE ref
     return 1
       if $opts_ref->{'dump-env'}
       or $opts_ref->{clean}
@@ -159,7 +160,7 @@ sub _run_precondition_check {
 sub _run_postcondition_check {
     my ( $self, $op, $opts_ref ) = @_;
 
-# skips check if --clean or postcondition check doesn't exist in step's definition as a CODE ref
+    # skips check if --clean or postcondition check doesn't exist in step's definition as a CODE ref
     return 1
       if $opts_ref->{'dump-env'}
       or $opts_ref->{clean}
@@ -171,7 +172,7 @@ sub _run_postcondition_check {
 sub _run_finalize {
     my ( $self, $opts_ref ) = @_;
 
-    return 1 if $opts_ref->{'list-steps'} or $opts_ref->{'clean'}; # do not show
+    return 1 if $opts_ref->{'list-steps'} or $opts_ref->{'clean'};    # do not show
 
     $self->_print_summary($opts_ref);
 
@@ -213,16 +214,17 @@ sub _setup_ENV {
     foreach my $envar ( keys %{ $op->{export_ENV} } ) {
         ++$AFFECTED_ENV_VARS->{$envar};    # track all environmental variables that are touched
 
-	# default "how" mode is to prepend if the envar is already defined
-	if ( not defined $op->{export_ENV}->{$envar}->{how} or $op->{export_ENV}->{$envar}->{how} eq q{prepend} ) {
-          $ENV{$envar} = sprintf("%s%s", $op->{export_ENV}->{$envar}->{value}, ( $ENV{$envar} ) ? q{:} . $ENV{$envar} : q{});
-	}
-	elsif ( $op->{export_ENV}->{$envar}->{how} eq q{append} ) {
-          $ENV{$envar} = sprintf("%s%s",  ( $ENV{$envar} ) ? $ENV{$envar} . q{:} : q{}, $op->{export_ENV}->{$envar}->{value} );
-	}
-	elsif ( $op->{export_ENV}->{$envar}->{how} eq q{replace} ) {
-          $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
-	}
+        # default "how" mode is to prepend if the envar is already defined
+        if ( not defined $op->{export_ENV}->{$envar}->{how} or $op->{export_ENV}->{$envar}->{how} eq q{prepend} ) {
+            $ENV{$envar} = sprintf( "%s%s", $op->{export_ENV}->{$envar}->{value}, ( $ENV{$envar} ) ? q{:} . $ENV{$envar} : q{} );
+        }
+        elsif ( $op->{export_ENV}->{$envar}->{how} eq q{append} ) {
+            $ENV{$envar} = sprintf( "%s%s", ( $ENV{$envar} ) ? $ENV{$envar} . q{:} : q{}, $op->{export_ENV}->{$envar}->{value} );
+        }
+        elsif ( $op->{export_ENV}->{$envar}->{how} eq q{replace} ) {
+            $ENV{$envar} = $op->{export_ENV}->{$envar}->{value};
+        }
+
         #print qq{setting $envar=$ENV{$envar}\n};
     }
     return 1;
@@ -240,7 +242,7 @@ sub get_steps {
 
     my $steps = [
         {
-	    key           => q{openmpi},
+            key           => q{openmpi},
             name          => q{Building OpenMPI 1.8.1 for gfortran},
             description   => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
             pwd           => q{./cloud/general},
@@ -253,75 +255,77 @@ sub get_steps {
             },
 
             # skip this step if the compiler is not set to gfortran
-            skip_if => sub { return ( ( $compiler ne q{gfortran} ) or ( -e qq{$install_path/bin/mpif90} )) ? 1 : 0 },
-            precondition_check  => sub { 1 },
+            skip_if            => sub { return ( ( $compiler ne q{gfortran} ) or ( -e qq{$install_path/bin/mpif90} ) ) ? 1 : 0 },
+            precondition_check => sub { 1 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
-                my $bin = qq{$opts_ref->{'install-path'}/bin};
+                my $bin          = qq{$opts_ref->{'install-path'}/bin};
                 my $ok           = 1;
-                my @mpi_binaries = ( qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/);
+                my @mpi_binaries = (
+                    qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/
+                );
                 map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
         },
         {
-	    key         => q{hdf5-netcdf},
-            name        => q{Building NetCDF, HDF5 libraries and utilities},
-            description => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
-            pwd         => q{./cloud/general},
-            command     => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
+            key           => q{hdf5-netcdf},
+            name          => q{Building NetCDF, HDF5 libraries and utilities},
+            description   => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
+            pwd           => q{./cloud/general},
+            command       => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib}, how => q{prepend} },
-                LD_INCLUDE_PATH => { value => qq{$install_path/include}, how => q{prepend} },
-                NETCDFHOME  => { value => qq{$install_path}, how => q{replace} },
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
+                LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
+                NETCDFHOME      => { value => qq{$install_path},           how => q{replace} },
+                CPPFLAGS        => { value => qq{-I$install_path/include}, how => q{replace} },
+                LDFLAGS         => { value => qq{-L$install_path/lib},     how => q{replace} },
             },
-            skip_if => sub { 0 }
-            , # if true and --force is not used, unilaterally skips the run step
-            precondition_check => sub { 1 }
-            ,    # just a "1" indicates no checking is done
+            skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
+            precondition_check => sub { 1 },    # just a "1" indicates no checking is done
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
-                my $ok = 1;
-                map { $ok = -e qq[$bin/$_] && $ok } ( qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/
-                  );
+                my $ok  = 1;
+                map { $ok = -e qq[$bin/$_] && $ok } (qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/);
                 return $ok;
             },
         },
         {
-	    key  => q{wgrib2},
-            name => q{Building wgrib2},
+            key         => q{wgrib2},
+            name        => q{Building wgrib2},
             description => q{Downloads and builds wgrib2 on all platforms for ASGS. Note: gfortran is required, so any compiler option passed is overridden.},
-            pwd  => q{./},
-	    # -j > 1 breaks this makefile
-            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
-            clean_command      => q{make clean},
-            skip_if            => sub { 0 },
-            precondition_check => sub { 1 },
-            postcondition_check =>
-              sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
+            pwd         => q{./},
+
+            # -j > 1 breaks this makefile
+            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+            clean_command       => q{make clean},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
+            postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./wgrib2}; },
         },
         {
-	    key  => q{cpra-postproc},
-            name => q{Building in output/cpra_postproc},
-            description => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
-            pwd  => q{./output/cpra_postproc},
-            command => qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command      => q{make clean},
-            skip_if            => sub { 0 },
-            precondition_check => sub { 1 },
+            key                 => q{cpra-postproc},
+            name                => q{Building in output/cpra_postproc},
+            description         => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
+            pwd                 => q{./output/cpra_postproc},
+            command             => qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command       => q{make clean},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./FigureGen}; },
         },
         {
-	    key  => q{output},
-            name => q{Building in output/},
+            key         => q{output},
+            name        => q{Building in output/},
             description => q{Runs the makefile and builds associated utilities in the util/ directory.},
-            pwd  => q{./output},
-	    # -j > 1 breaks this makefile
-            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            pwd         => q{./output},
+
+            # -j > 1 breaks this makefile
+            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -331,22 +335,22 @@ sub get_steps {
             },
         },
         {
-	    key  => q{util},
-            name => q{Building in util/},
-            description => q{Runs the makefile and builds all associated utilities in the util/ directory.},
-            pwd  => q{./util},
-            command => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command      => q{make clean},
-            skip_if            => sub { 0 },
-            precondition_check => sub { 1 },
+            key                 => q{util},
+            name                => q{Building in util/},
+            description         => q{Runs the makefile and builds all associated utilities in the util/ directory.},
+            pwd                 => q{./util},
+            command             => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command       => q{make clean},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./makeMax.x}; },
         },
         {
-	    key  => q{input-mesh},
-            name => q{Building in util/input/mesh},
-            description => q{Runs the makefile and builds all associated util/input/mesh in the util/ directory.},
-            pwd  => qq{./util/input/mesh},
-            command => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            key                 => q{input-mesh},
+            name                => q{Building in util/input/mesh},
+            description         => q{Runs the makefile and builds all associated util/input/mesh in the util/ directory.},
+            pwd                 => qq{./util/input/mesh},
+            command             => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -356,36 +360,37 @@ sub get_steps {
             },
         },
         {
-	    key  => q{input-nodalattr},
-            name => q{Building in util/input/nodalattr},
+            key         => q{input-nodalattr},
+            name        => q{Building in util/input/nodalattr},
             description => q{Runs the makefile and builds associated utilities in the util/input/nodalattr directory.},
-            pwd  => q{./util/input/nodalattr},
-	    # -j > 1 breaks this makefile
-            command => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
-            clean_command      => q{make clean},
-            skip_if            => sub { 0 },
-            precondition_check => sub { 1 },
+            pwd         => q{./util/input/nodalattr},
+
+            # -j > 1 breaks this makefile
+            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            clean_command       => q{make clean},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
         },
         {
             key           => q{perlbrew},
             name          => q{Building perlbrew and perl for ASGS},
-            description  => q{Installs local Perl environment used for ASGS.},
+            description   => q{Installs local Perl environment used for ASGS.},
             pwd           => q{./},
             command       => q{bash ./cloud/general/init-perlbrew.sh},
             clean_command => q{bash ./cloud/general/init-perlbrew.sh clean},
 
             # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
-	    # using perl-5.28.2
+            # using perl-5.28.2
             export_ENV => {
-                PATH             => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
-		PERLBREW_PERL    => { value => q{perl-5.28.2}, how => q{replace} },
-		PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man}, how => q{prepend} },
-		PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
-		PERLBREW_HOME    => { value => qq{$home/.perlbrew}, how => q{replace} },
-		PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew}, how => q{replace} },
+                PATH             => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin},                          how => q{prepend} },
+                PERLBREW_PERL    => { value => q{perl-5.28.2},                                                          how => q{replace} },
+                PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man},                          how => q{prepend} },
+                PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
+                PERLBREW_HOME    => { value => qq{$home/.perlbrew},                                                     how => q{replace} },
+                PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew},                                                how => q{replace} },
             },
-	    skip_if       => sub { return (-e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl}) ? 1 : 0 },
+            skip_if             => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 return -e qq{$home/perl5/perlbrew/etc/bashrc};
