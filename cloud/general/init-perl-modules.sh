@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # unconditionally attempts to install the Perl modules that are required
-for the operation of ASGS.
+#for the operation of ASGS.
 
 perlbrew --force install-cpanm
 cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)

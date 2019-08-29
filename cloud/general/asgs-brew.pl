@@ -185,6 +185,8 @@ sub _run_command {
     # choose command to run
     my $command = ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
 
+    return 1 if not defined $command;
+
     local $| = 1;
 
     print qq{\n$command\n};
@@ -396,13 +398,13 @@ sub get_steps {
             },
         },
         {
-            key           => q{perl-modules},
-            name          => q{Step for installing required Perl modulesS},
-            description   => q{Installs local Perl modules used for ASGS.},
-            pwd           => q{./},
-            command       => q{bash ./cloud/general/init-perl-modules.sh},
-            clean_command => q{},
-            skip_if       => sub { return ( ! -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
+            key                 => q{perl-modules},
+            name                => q{Step for installing required Perl modulesS},
+            description         => q{Installs local Perl modules used for ASGS.},
+            pwd                 => q{./},
+            command             => q{bash ./cloud/general/init-perl-modules.sh},
+            clean_command       => q{},
+            precondition_check  => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
         },
     ];
     return $steps;
