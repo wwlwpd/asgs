@@ -2,7 +2,7 @@
 
 if [ ! -d $HOME/adcirc-cg/work ]; then
   cd $HOME
-  git clone https://github.com/wwlwpd/adcirc-cg.git
+  git clone https://github.com/adcirc/adcirc-cg.git 
 fi
 
 export PERLBREW_HOME=/home/vagrant/.perlbrew

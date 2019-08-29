@@ -25,12 +25,14 @@ For help on the tool,
    ;;; note, this "[email]" is a section header for the config file,
    ;;; do not replace it with an email address =)
    [email]
+
    from_address=info@stormsurge.email
    reply_to_address=info@stormsurge.email
    smtp_host=email-smtp.us-east-1.amazonaws.com
    smtp_port=587
    smtp_username=(redacted)
    smtp_password=(redacted)
+
    ;;; note, "from" addresses must be verified via Amazon's SES console
    ;;; before deviating from 'info@stormsurge.email' 
    ;;; note, from_address is not what it may look like it came from,

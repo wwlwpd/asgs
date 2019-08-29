@@ -195,11 +195,13 @@ sub _run_command {
 
 sub _print_summary {
     my ( $self, $opts_ref ) = @_;
+
     return 1 if $opts_ref->{clean};
     print q{-} x 45 . qq{\nSummary of updated environmental variables (these need to be added to ~/.bash_profile or similar):\n\n};
     foreach my $envar ( keys %$AFFECTED_ENV_VARS ) {
         printf( qq{export %s=%s\n}, $envar, $ENV{$envar} );
     }
+
     return 1;
 }
 
