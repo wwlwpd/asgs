@@ -267,12 +267,12 @@ sub get_steps {
             },
         },
         {
-            key           => q{hdf5-netcdf},
-            name          => q{Step for NetCDF, HDF5 libraries and utilities},
-            description   => q{Downloads and builds the versions of HDF5 and NetCDF that have been tested to work on all platforms for ASGS.},
+            key           => q{hdf5},
+            name          => q{Step for HDF5 libraries and utilities},
+            description   => q{Downloads and builds the version of HDF5 that has been tested to work on all platforms for ASGS.},
             pwd           => q{./cloud/general},
-            command       => qq{bash init-hdf5-netcdf4.sh $install_path $compiler $makejobs},
-            clean_command => qq{bash init-hdf5-netcdf4.sh $install_path clean},
+            command       => qq{bash init-hdf5.sh $install_path $compiler $makejobs},
+            clean_command => qq{bash init-hdf5.sh $install_path clean},
 
             # augment existing %ENV (cumulative)
             export_ENV => {
@@ -290,7 +290,32 @@ sub get_steps {
                 my ( $op, $opts_ref ) = @_;
                 my $bin = qq{$opts_ref->{'install-path'}/bin};
                 my $ok  = 1;
-                map { $ok = -e qq[$bin/$_] && $ok } (qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat nc-config ncdump ncgen3 h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam nccopy ncgen nf-config/);
+                map { $ok = -e qq[$bin/$_] && $ok } (qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam/);
+                return $ok;
+            },
+        },
+        {
+            key           => q{netcdf4},
+            name          => q{Step for NetCDF4 libraries and utilities},
+            description   => q{Downloads and builds the versions of NetCDF and NetCFD-Fortran that have been tested to work on all platforms for ASGS.},
+            pwd           => q{./cloud/general},
+            command       => qq{bash init-netcdf4.sh $install_path $compiler $makejobs},
+            clean_command => qq{bash init-netcdf4.sh $install_path clean},
+
+            # Note: uses environment set by hdf5 step above
+            skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
+            precondition_check => sub {         # requires HDF5, so the precondition here is the same as the post condition of the hdf5 step above
+                my ( $op, $opts_ref ) = @_;
+                my $bin = qq{$opts_ref->{'install-path'}/bin};
+                my $ok  = 1;
+                map { $ok = -e qq[$bin/$_] && $ok } (qw/gif2h5 h5cc h5debug h5dump h5import h5ls h5perf_serial h5repack h5stat h52gif h5copy h5diff h5fc h5jam h5mkgrp h5redeploy h5repart h5unjam/);
+                return $ok;
+            },
+            postcondition_check => sub {
+                my ( $op, $opts_ref ) = @_;
+                my $bin = qq{$opts_ref->{'install-path'}/bin};
+                my $ok  = 1;
+                map { $ok = -e qq[$bin/$_] && $ok } (qw/nc-config ncdump ncgen3 nccopy ncgen nf-config/);
                 return $ok;
             },
         },
