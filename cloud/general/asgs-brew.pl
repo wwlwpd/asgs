@@ -261,9 +261,7 @@ sub get_steps {
                 my ( $op, $opts_ref ) = @_;
                 my $bin          = qq{$opts_ref->{'install-path'}/$compiler/bin};
                 my $ok           = 1;
-                my @mpi_binaries = (
-                    qw/mpic++ mpic++-vt mpif77-vt mpirun ompi-top orted orte-top otfaux  otfmerge otfshrink vtcc vtfilter  vtrun mpicc mpicxx mpif90 ompi-clean opal_wrapper orte-info oshcc otfcompress otfmerge-mpi shmemcc vtCC vtfiltergen vtunify mpiCC mpicxx-vt mpif90-vt ompi_info opari  orte-ps oshfort otfconfig otfprint shmemfort vtcxx vtfiltergen-mpi vtunify-mpi mpicc-vt mpiexec mpifort ompi-ps ortecc orterun oshmem_info otfdecompress otfprofile shmemrun vtf77 vtfilter-mpi vtwrapper mpiCC-vt mpif77 mpifort-vt ompi-server orte-clean orte-server oshrun otfinfo otfprofile-mpi vtc++ vtf90 vtfort/
-                );
+                my @mpi_binaries = ( qw/mpiCC mpic++ mpicc mpicxx mpiexec mpif77 mpif90 mpifort mpirun ompi-clean ompi-ps ompi-server ompi-top ompi_info opal_wrapper orte-clean orte-info orte-ps orte-server orte-top ortecc orted orterun/);
                 map { $ok = -e qq[$bin/$_] && $ok } @mpi_binaries;
                 return $ok;
             },
@@ -278,6 +276,7 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
+                PATH            => { value => qq{$install_path/bin},       how => q{prepend} },
                 LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
                 LIBRARY_PATH    => { value => qq{$install_path/lib},       how => q{prepend} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
