@@ -174,6 +174,10 @@ sub _run_finalize {
 
     $self->_print_summary($opts_ref);
 
+    # write $HOME/init-adcirc.sh
+
+    # write $HOME/run-asgs.sh
+
     return 1;
 }
 
@@ -242,6 +246,26 @@ sub get_steps {
 
     my $steps = [
         {
+            key           => q{setup-env},
+            name          => q{Initializes common environmental variables needed for subsequent steps in asgs-brew.pl.},
+            description   => q{Updates current environment with variables needed for subsequent steps. It only affects the environment within the asgs-brew.pl environment.},
+            pwd           => q{./},
+            command       => qq{echo Setting up environmental variables...},
+            clean_command => qq{echo no "clean" step for setup-env...},
+
+            # augment existing %ENV (cumulative)
+            export_ENV => {
+                PATH            => { value => qq{$install_path/bin},       how => q{prepend} },
+                LIBRARY_PATH    => { value => qq{$install_path/lib},       how => q{prepend} },
+                LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
+                LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
+                MACHINENAME     => { value => qq{$machinename},            how => q{replace} },
+            },
+            skip_if             => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
+            precondition_check  => sub { 1 },    # just a "1" indicates no checking is done
+            postcondition_check => sub { 1 },
+        },
+        {
             key           => q{openmpi},
             name          => q{Step for OpenMPI 1.8.1 for gfortran},
             description   => q{Downloads and builds OpenMPI on all platforms for ASGS. Note: gfortran is required, so any compiler option causes this step to be skipped.},
@@ -276,11 +300,6 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                PATH            => { value => qq{$install_path/bin},       how => q{prepend} },
-                LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
-                LIBRARY_PATH    => { value => qq{$install_path/lib},       how => q{prepend} },
-                LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
-                NETCDFHOME      => { value => qq{$install_path},           how => q{replace} },
                 CPPFLAGS        => { value => qq{-I$install_path/include}, how => q{replace} },
                 LDFLAGS         => { value => qq{-L$install_path/lib},     how => q{replace} },
             },
@@ -302,7 +321,11 @@ sub get_steps {
             command       => qq{bash init-netcdf4.sh $install_path $compiler $makejobs},
             clean_command => qq{bash init-netcdf4.sh $install_path clean},
 
-            # Note: uses environment set by hdf5 step above
+            # Note: uses environment set by setup-env step above
+            # augment existing %ENV (cumulative)
+            export_ENV => {
+                NETCDFHOME      => { value => qq{$install_path},           how => q{replace} },
+            },
             skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
             precondition_check => sub {         # requires HDF5, so the precondition here is the same as the post condition of the hdf5 step above
                 my ( $op, $opts_ref ) = @_;
@@ -429,6 +452,28 @@ sub get_steps {
             command             => q{bash ./cloud/general/init-perl-modules.sh},
             clean_command       => q{},
             precondition_check  => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
+        },
+        {
+            key         => q{python},
+            name        => q{Install Python modules},
+            description => q{Uses `pip` and system python to install: pika, netCDF4, and python-pptx python modules.},
+            pwd         => q{./},
+            command             => q{pip install --user pika; pip install --user netCDF4; pip install --user python-pptx}, 
+            clean_command       => q{echo there is no clean command for this step},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
+            postcondition_check => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
+        },
+        {
+            key         => q{build-adcirc},
+            name        => q{Build ADCIRC and SWAN},
+            description => q{Builds ADCIRC and SWAN if $HOME/adcirc-cg exists.},
+            pwd         => qq{./},
+            command             => q{bash cloud/general/init-adcirc.sh}, 
+            clean_command       => q{bash cloud/general/init-adcirc.sh clean},
+            skip_if             => sub { 0 },
+            precondition_check  => sub { 1 },
+            postcondition_check => sub { -e qq{$home/adcirc-cg/work/padcirc} },
         },
     ];
     return $steps;
