@@ -2,6 +2,7 @@ Date::Format
 Date::Handler
 DateTime
 DateTime::Format::Builder
+Date::Calc
 IO::Socket::SSL
 HTTP::Tiny
 List::Util
@@ -14,3 +15,4 @@ Email::Sender::Transport::SMTP::TLS
 Email::Simple::Creator
 Config::Tiny
 Try::Tiny
+Test::More

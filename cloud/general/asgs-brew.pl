@@ -131,7 +131,11 @@ sub _run_steps {
         }
 
         # run command or clean_command (looks for --clean)
-        $self->_run_command( $op, $opts_ref );
+        my $exit_code = $self->_run_command( $op, $opts_ref );
+        
+        # always expects a clean exit code (value of 0) from the command, a command that doesn't return one
+        # is probably faulty in some way
+        die qq{command for "$op->{name}" exited with an error code of $exit_code, stopping. Please fix and rerun.\n} if ! defined $exit_code or $exit_code > 0;
 
         # verify step completed successfully
         # check is skipped if --clean is passed
@@ -189,14 +193,15 @@ sub _run_command {
     # choose command to run
     my $command = ( not $opts_ref->{clean} ) ? $op->{command} : $op->{clean_command};
 
-    return 1 if not defined $command;
+    return 0 if not defined $command;
 
     local $| = 1;
-
+    local $?;
     print qq{\n$command\n};
     system("$command 2>&1");
+    my $exit_code = ($? >> 8); # captures child process exit code
 
-    return 1;
+    return $exit_code;
 }
 
 sub _print_summary {
@@ -437,6 +442,7 @@ sub get_steps {
                 PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
                 PERLBREW_HOME    => { value => qq{$home/.perlbrew},                                                     how => q{replace} },
                 PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew},                                                how => q{replace} },
+                PERL5LIB        => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/lib/site_perl/5.28.2/},        how => q{prepend} },
             },
             skip_if             => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
             postcondition_check => sub {
@@ -446,12 +452,19 @@ sub get_steps {
         },
         {
             key                 => q{perl-modules},
-            name                => q{Step for installing required Perl modulesS},
+            name                => q{Step for installing required Perl modules},
             description         => q{Installs local Perl modules used for ASGS.},
             pwd                 => q{./},
             command             => q{bash ./cloud/general/init-perl-modules.sh},
             clean_command       => q{},
             precondition_check  => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
+            postcondition_check => sub { 
+              local $?;
+              system(qq{prove $home/asgs/cloud/general/verify-perl-modules.t 2>&1});
+              # look for zero exit code on success
+              my $exit_code = ($? >> 8);
+              return (defined $exit_code and $exit_code == 0) ? 1 : 0;
+            },
         },
         {
             key         => q{python},
@@ -465,7 +478,7 @@ sub get_steps {
             postcondition_check => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
         },
         {
-            key         => q{build-adcirc},
+            key         => q{adcirc},
             name        => q{Build ADCIRC and SWAN},
             description => q{Builds ADCIRC and SWAN if $HOME/adcirc-cg exists.},
             pwd         => qq{./},
