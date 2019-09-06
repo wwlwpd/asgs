@@ -265,6 +265,7 @@ sub get_steps {
                 LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
                 MACHINENAME     => { value => qq{$machinename},            how => q{replace} },
+                ADCCOMPILER     => { value => qq{$compiler},               how => q{replace} },
             },
             skip_if             => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },    # just a "1" indicates no checking is done
@@ -442,9 +443,9 @@ sub get_steps {
                 PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
                 PERLBREW_HOME    => { value => qq{$home/.perlbrew},                                                     how => q{replace} },
                 PERLBREW_ROOT    => { value => qq{$home/perl5/perlbrew},                                                how => q{replace} },
-                PERL5LIB        => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/lib/site_perl/5.28.2/},        how => q{prepend} },
+                PERL5LIB         => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/lib/site_perl/5.28.2/},        how => q{prepend} },
             },
-            skip_if             => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
+            skip_if             => sub { 0 },
             postcondition_check => sub {
                 my ( $op, $opts_ref ) = @_;
                 return -e qq{$home/perl5/perlbrew/etc/bashrc};
@@ -459,11 +460,11 @@ sub get_steps {
             clean_command       => q{},
             precondition_check  => sub { return ( -e qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin/perl} ) ? 1 : 0 },
             postcondition_check => sub { 
-              local $?;
-              system(qq{prove $home/asgs/cloud/general/verify-perl-modules.t 2>&1});
-              # look for zero exit code on success
-              my $exit_code = ($? >> 8);
-              return (defined $exit_code and $exit_code == 0) ? 1 : 0;
+                local $?;
+                system(qq{prove $home/asgs/cloud/general/t/verify-perl-modules.t 2>&1});
+                # look for zero exit code on success
+                my $exit_code = ($? >> 8);
+                return (defined $exit_code and $exit_code == 0) ? 1 : 0;
             },
         },
         {
@@ -474,8 +475,14 @@ sub get_steps {
             command             => q{pip install --user pika; pip install --user netCDF4; pip install --user python-pptx}, 
             clean_command       => q{echo there is no clean command for this step},
             skip_if             => sub { 0 },
-            precondition_check  => sub { 1 },
-            postcondition_check => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
+            precondition_check  => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
+            postcondition_check => sub { 
+                local $?;
+                system(qq{$home/asgs/cloud/general/t/verify-python-modules.py 2>&1});
+                # look for zero exit code on success
+                my $exit_code = ($? >> 8);
+                return (defined $exit_code and $exit_code == 0) ? 1 : 0;
+            },
         },
         {
             key         => q{adcirc},
