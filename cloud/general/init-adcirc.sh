@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# meant to be run under the asgs-brew.pl environment
+
 TODO=${1-make};
 
 cd $HOME/adcirc-cg

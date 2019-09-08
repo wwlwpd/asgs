@@ -30,7 +30,7 @@
 #
 use strict;
 use Getopt::Long;
-use Date::Pcalc;
+use Date::Calc;
 use Cwd;
 $^W++;
 
@@ -98,7 +98,7 @@ my $nHour = $4;
 #
 # get difference
 (my $ddays, my $dhrs, my $dsec)
-           = Date::Pcalc::Delta_DHMS(
+           = Date::Calc::Delta_DHMS(
                 $csYear,$csMonth,$csDay,$csHour,0,0,
                 $nYear,$nMonth,$nDay,$nHour,0,0);
 #
