@@ -10,12 +10,4 @@ for my $module (<$fh>) {
   require_ok $module;
 }
 
-require_ok q{Date::Pcalc};
-
-local $@;
-my $ok = eval {
-  require Fart::Fart || die 'fart';;
-};
-print $@;
-
 done_testing();
