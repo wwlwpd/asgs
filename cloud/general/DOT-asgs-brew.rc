@@ -17,13 +17,14 @@ echo   verify  - verfies Perl and Python environments
 echo   exit    - exits ASGS shell, returns $USER to login shell
 }
 
-
 verify() {
   echo verifying Perl Environment:
   which perl
+  pushd $SCRIPTDIR > /dev/null 2>&1
   perl $SCRIPTDIR/cloud/general/t/verify-perl-modules.t
   which python
   python $SCRIPTDIR/cloud/general/t/verify-python-modules.py && echo Python modules loaded ok
+  popd > /dev/null 2>&1
 }
 
 configs() {
