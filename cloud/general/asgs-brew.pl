@@ -182,8 +182,8 @@ sub _run_finalize {
     my $env_summary  = $self->_get_env_summary($opts_ref);
     print $env_summary;
 
-    my $rcfile_src = q{./cloud/general/DOT-asgs-brew.rc};
-    my $rcfile = qq{$home/.asgs-brew.rc};
+    my $rcfile_src = q{./cloud/general/DOT-asgs-brew.sh};
+    my $rcfile = qq{$home/.asgs-brew.sh};
     if ( -e $rcfile_src ) {
       File::Copy::copy($rcfile_src,$rcfile); 
     } 
