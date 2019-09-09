@@ -3,18 +3,32 @@
 export PS1='asgs> '
 echo Type \'exit\' to return to the login shell.
 
-# ALIASED COMMANDS
-alias sq="squeue -u $USER"
-
 # COMMANDS DEFINED AS BASH FUNCTIONS
 
 help() {
 echo
 echo Commands:
 echo   configs - lists ASGS configuration files based on year \(interactive\)
-echo   sq      - shortcut for "squeue -u $USER"
+echo   sq      - shortcut for "squeue -u $USER" \(if squeue is available\)
 echo   verify  - verfies Perl and Python environments
 echo   exit    - exits ASGS shell, returns $USER to login shell
+}
+
+configs() {
+  read -p "Show configs for what year? " year
+  if [ -d $SCRIPTDIR/config/$year ]; then
+    ls -1 $SCRIPTDIR/config/$year | less
+  else
+    echo ASGS configs for $year do not exist 
+  fi
+}
+
+sq() {
+  if [ -n $(which squeue) ]; then
+    squeue -u $USER  
+  else
+    echo The `squeue` utility has not been found in your PATH \(slurm is not available\)
+  fi
 }
 
 verify() {
@@ -27,11 +41,3 @@ verify() {
   popd > /dev/null 2>&1
 }
 
-configs() {
-  read -p "Show configs for what year? " year
-  if [ -d $SCRIPTDIR/config/$year ]; then
-    ls -1 $SCRIPTDIR/config/$year | less
-  else
-    echo ASGS configs for $year do not exist 
-  fi
-}
