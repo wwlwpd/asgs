@@ -51,6 +51,11 @@ GetOptions(
            "hstime=s" => \$hstime,
            "enstorm=s" => \$enstorm
            );
+
+# presumptive fix put in the satisfy 'strict' warnings
+my $name          = $enstorm;
+my $dir           = $advisdir;
+my $coldstartdate = $csdate;
 #
 # check to see if the name of the storm is one that this script knows how to
 # generate ... if not, bomb out

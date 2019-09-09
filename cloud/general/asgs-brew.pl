@@ -301,6 +301,7 @@ sub get_steps {
                 MACHINENAME     => { value => qq{$machinename},            how => q{replace} },
                 ADCCOMPILER     => { value => qq{$compiler},               how => q{replace} },
                 SCRIPTDIR       => { value => qq{$scriptdir},              how => q{replace} },
+                PERL5LIB        => { value => qq{$scriptdir/PERL},         how => q{append}  },
             },
             skip_if             => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
             precondition_check  => sub { 1 },    # just a "1" indicates no checking is done

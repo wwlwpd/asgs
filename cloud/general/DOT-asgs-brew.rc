@@ -8,10 +8,10 @@ echo Type \'exit\' to return to the login shell.
 help() {
 echo
 echo Commands:
-echo   configs - lists ASGS configuration files based on year \(interactive\)
-echo   sq      - shortcut for "squeue -u $USER" \(if squeue is available\)
-echo   verify  - verfies Perl and Python environments
-echo   exit    - exits ASGS shell, returns $USER to login shell
+echo "   configs - lists ASGS configuration files based on year (interactive)"
+echo "   sq      - shortcut for \"squeue -u \$USER\" (if squeue is available)"
+echo "   verify  - verfies Perl and Python environments"
+echo "   exit    - exits ASGS shell, returns $USER to login shell"
 }
 
 configs() {
@@ -36,8 +36,16 @@ verify() {
   which perl
   pushd $SCRIPTDIR > /dev/null 2>&1
   perl $SCRIPTDIR/cloud/general/t/verify-perl-modules.t
+  echo verifying Perl scripts can pass compile phase \(perl -c\)
+  for file in $(find . -name "*.pl"); do perl -c $file > /dev/null 2>&1 && echo ok     $file || echo not ok $file; done
   which python
   python $SCRIPTDIR/cloud/general/t/verify-python-modules.py && echo Python modules loaded ok
+  echo verifying Python scripts can pass compile phase \(python -m py_compile\)
+  for file in $(find . -name "*.py"); do
+    python -m py_compile $file > /dev/null 2>&1 && echo ok     $file || echo not ok $file;
+    # clean up potentially useful *.pyc (compiled python) files
+    rm -f ${file}c
+  done
   popd > /dev/null 2>&1
 }
 
