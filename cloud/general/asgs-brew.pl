@@ -526,7 +526,7 @@ sub get_steps {
             pwd         => qq{./},
             command             => q{bash cloud/general/init-adcirc.sh}, 
             clean_command       => q{bash cloud/general/init-adcirc.sh clean},
-            skip_if             => sub { 0 },
+            skip_if             => sub { -e qq{$home/adcirc-cg/work/padcirc} },
             precondition_check  => sub { 1 },
             postcondition_check => sub { -e qq{$home/adcirc-cg/work/padcirc} },
         },
