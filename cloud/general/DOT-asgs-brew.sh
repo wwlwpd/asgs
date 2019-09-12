@@ -8,21 +8,21 @@ echo Type \'exit\' to return to the login shell.
 help() {
 echo
 echo Commands:
-echo "   delete <name>              - deletes named session"
+echo "   delete <name>              - deletes named profile"
 echo "   edit config                - opens up \$ASGS_CONFIG using \$EDITOR (must be set, if not use the 'set editor' command)"
 echo "   list-configs               - lists ASGS configuration files based on year (interactive)"
-echo "   list-sessions              - lists all saved sessions that can be specified by load"
-echo "   load   <name>              - loads a saved session by name"
-echo "   run                        - runs asgs using config file, \$ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a session"
-echo "   save   <name>              - saves an asgs named session"
-echo "   set    <param> \"<value>\"   - sets specified session variables (i.e., variables that do not last after 'exit')"
+echo "   list-profiles              - lists all saved profiles that can be specified by load"
+echo "   load   <name>              - loads a saved profile by name"
+echo "   run                        - runs asgs using config file, \$ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile"
+echo "   save   <name>              - saves an asgs named profile"
+echo "   set    <param> \"<value>\"   - sets specified profile variables (i.e., variables that do not last after 'exit')"
 echo "     parameters:"
 echo "        *  config             - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
 echo "        *  editor             - sets default editor, (\$EDITOR)"
 echo "        *  scratchdir         - sets ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
 echo "        *  scriptdir          - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
 echo "        *  workdir            - sets ASGS main script directory used by all underlying scripts, (\$WORK)"
-echo "   show   <param>             - shows specified session variables (i.e., variables that do not last after 'exit')"
+echo "   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')"
 echo "     parameters:"
 echo "        *  config             - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
 echo "        *  editor             - shows what default editor is set to, (\$EDITOR)"
@@ -45,7 +45,7 @@ list-configs() {
 
 delete() {
   if [ -z "${1}" ]; then
-    echo \'delete\' requires a name parameter, does NOT unload current session 
+    echo \'delete\' requires a name parameter, does NOT unload current profile 
     return
   fi
   NAME=${1}
@@ -53,7 +53,7 @@ delete() {
     rm -f "$HOME/.asgs/$NAME"
     echo deleted \'$NAME\'
   else
-    echo no saved session found
+    echo no saved profile found
   fi
 }
 
@@ -76,12 +76,12 @@ edit() {
   esac
 }
 
-list-sessions() {
+list-profiles() {
   if [ ! -d "$HOME/.asgs/" ]; then
-    echo no sessions saved
+    echo no profiles saved
   else
-    for session in $(ls -1 "$HOME/.asgs/" | sort); do
-      echo "- $session"
+    for profile in $(ls -1 "$HOME/.asgs/" | sort); do
+      echo "- $profile"
     done
     return
   fi
@@ -89,16 +89,16 @@ list-sessions() {
 
 load() {
   if [ -z "${1}" ]; then
-    echo \'load\' requires a name parameter, use \'list-sessions\' to list saved sessions
+    echo \'load\' requires a name parameter, use \'list-profiles\' to list saved profiles
     return
   fi
   NAME=${1}
   if [ -e "$HOME/.asgs/$NAME" ]; then
     . "$HOME/.asgs/$NAME"
     export PS1="asgs ($NAME)> "
-    echo loaded \'$NAME\' into current session;
+    echo loaded \'$NAME\' into current profile;
   else
-    echo no saved session found
+    echo no saved profile found
   fi
 }
 
@@ -122,12 +122,11 @@ save() {
     mkdir -p $HOME/.asgs
   fi
 
-  IS_UPDATE=
-  if [ -e "$ASGS_CONFIG" ]; then
+  if [ -e "$HOME/.asgs/$NAME" ]; then
     IS_UPDATE=1
   fi
 
-  # be very specific about the "session variables" saved
+  # be very specific about the "profile variables" saved
   echo "export ASGS_CONFIG=${ASGS_CONFIG}" > "$HOME/.asgs/$NAME"
   echo "export EDITOR=${EDITOR}"    >> "$HOME/.asgs/$NAME"
   echo "export SCRATCH=${SCRATCH}"    >> "$HOME/.asgs/$NAME"
@@ -138,9 +137,9 @@ save() {
   export PS1="asgs ($NAME)> "
 
   if [ -n "$IS_UPDATE" ]; then
-    echo $NAME was updated
+    echo profile \'$NAME\' was updated
   else
-    echo $NAME was written
+    echo profile \'$NAME\' was written
   fi
 }
 

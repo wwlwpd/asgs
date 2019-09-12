@@ -70,20 +70,29 @@ parenthesis. When loading or saving an named environment, 'none' is replaced
 with the name of the session to indicate to the user that they are in a
 customized environment.
 
-  asgs (none)> load hurricane-dorian-ec95d 
-  asgs (hurricane-dorian-ec95d)> show config
-  asgs (hurricane-dorian-ec95d)> ASGS_CONFIG is set to '/path/to/config.sh'
-  asgs (hurricane-dorian-ec95d)> set config '/path/to/a/different/config.sh'
-  asgs (hurricane-dorian-ec95d)> ASGS_CONFIG is set to '/path/to/a/different/config.sh'
-  asgs (hurricane-dorian-ec95d)> edit config  # opens $ASGS_CONFIG up in a text editor
-  
-
-Or
+For example, to create a profile the session would look something like the
+following:
 
   asgs (none)> set config /path/to/config.sh 
-  asgs (none)> save bar
-  asgs (bar)>
+  asgs (none)> save hurricane-dorian-ec95d 
+  profile 'hurricane-dorian-ec95d' was written
+  asgs (hurricane-dorian-ec95d)> 
 
+Loading a profile when none is yet loaded would look like:
+
+  asgs (none)> load hurricane-dorian-ec95d 
+  loaded 'hurricane-dorian-ec95d' into current profile
+  asgs (hurricane-dorian-ec95d)>
+
+At the time of this writing, the following environmental variables can be directly
+managed and saved via asgsh.
+
+* ASGS_CONFIG - used by 'run' to pass asgs_main.sh its configuration argument (-c)
+* EDITOR      - used by 'edit' command
+* SCRIPTDIR   - used by asgs_main.sh to know where to find helper scripts and utilities
+* SCRATCH     - used by asgs_main.sh, where models are executing from
+* WORK        - used by asgs_main.sh, some scripts for sharing output across systems
+ 
 Updating ASGS Shell
 ~~~~~~~~~~~~~~~~~~~
 
@@ -100,22 +109,20 @@ Appendix A - Current Set of Commands
 	asgs (none)> help
 
 	Commands:
-	   delete <name>              - deletes named session
+	   delete <name>              - deletes named profile
 	   edit config                - opens up $ASGS_CONFIG using $EDITOR (if not set, defaults to vi)
 	   list-configs               - lists ASGS configuration files based on year (interactive)
-	   list-sessions              - lists all saved sessions that can be specified by load
-	   load   <name>              - loads a saved session by name
-	   run                        - runs asgs using config file, $ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a session
-	   save   <name>              - saves an asgs named session
-	   set    <param> "<value>"   - sets specified session variables (i.e., variables that do not last after 'exit')
-	     parameters:
+	   list-profiles              - lists all saved profiles that can be specified by load
+	   load   <name>              - loads a saved profile by name
+	   run                        - runs asgs using config file, $ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile
+	   save   <name>              - saves an asgs named profile
+	   set    <param> "<value>"   - sets specified profile variables (i.e., variables that do not last after 'exit')
 		*  config             - sets ASGS configuration file used by 'run', ($ASGS_CONFIG)
 		*  editor             - sets default editor, ($EDITOR)
 		*  scratchdir         - sets ASGS main script directory used by all underlying scripts, ($SCRATCH)
 		*  scriptdir          - sets ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
 		*  workdir            - sets ASGS main script directory used by all underlying scripts, ($WORK)
-	   show   <param>             - shows specified session variables (i.e., variables that do not last after 'exit')
-	     parameters:
+	   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')
 		*  config             - shows ASGS configuration file used by 'run', ($ASGS_CONFIG)
 		*  editor             - shows what default editor is set to, ($EDITOR)
 		*  scratchdir         - shows ASGS main script directory used by all underlying scripts, ($SCRATCH)
