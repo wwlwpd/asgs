@@ -121,6 +121,12 @@ save() {
   if [ ! -d $HOME/.asgs ]; then
     mkdir -p $HOME/.asgs
   fi
+
+  IS_UPDATE=
+  if [ -e "$ASGS_CONFIG" ]; then
+    IS_UPDATE=1
+  fi
+
   # be very specific about the "session variables" saved
   echo "export ASGS_CONFIG=${ASGS_CONFIG}" > "$HOME/.asgs/$NAME"
   echo "export EDITOR=${EDITOR}"    >> "$HOME/.asgs/$NAME"
@@ -130,6 +136,12 @@ save() {
   
   # update prompt
   export PS1="asgs ($NAME)> "
+
+  if [ -n "$IS_UPDATE" ]; then
+    echo $NAME was updated
+  else
+    echo $NAME was written
+  fi
 }
 
 set() {
