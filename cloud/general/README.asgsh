@@ -1,0 +1,99 @@
+Notes on the ASGS Shell, installed by asgs-brew.pl.
+
+Quick Start
+~~~~~~~~~~~
+
+Run the command,
+
+  % $HOME/opt/bin/asgsh
+
+You will see the prompt:
+
+  asgs (none)>
+
+Verify Perl and Python are set up properly after asgs-brew.pl runs:
+
+  asgs (none)> verify
+
+The environment created by asgs-brew.pl is fully available, as are some helpful
+commands that are summarized in Appendeix A.
+
+You may also run the 'help' command to see the latest description of available
+commands.
+
+Usage Description
+~~~~~~~~~~~~~~~~~
+
+The ASGS Shell (asgsh) is meant to make it easy to set up, run, and monitor
+ASGS instances.
+
+The 'run' command calls asgs_main.sh and automatically includes the config
+file that is tracked by the shell (internally as $ASGS_CONFIG). This can
+be set using the 'set config' command. To see the present value of the config,
+use the 'show config' command. See the command description below to see what
+can be set.
+
+Saving and Loading ASGS Sessions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Environment and variables that are able to be set via the 'set' command
+can be saved as a named session. To do this use the 'save' command. It
+saves as a named session, all variables that may be defined via the 'set'
+command. This ability is very helpful when juggling among various configurations
+or when running multiple ASGS instances from the same login node.
+
+When asgsh is first started, the prompt shows the name of the environment in
+parenthesis. When loading or saving an named environment, 'none' is replaced
+with the name of the session to indicate to the user that they are in a customized
+environment. 
+
+  asgs (none)> lood foo
+  asgs (foo)>
+
+Or
+
+  asgs (none)> set config /path/to/config.sh 
+  asgs (none)> save bar
+  asgs (bar)>
+
+Updating ASGS Shell
+~~~~~~~~~~~~~~~~~~~
+
+The shell is created whenever asgs-brew.pl is run, this includes when it is run
+with the --dump-env flag. Updated shells will come with updated versions of
+the ASGS system via asgs-brew.pl (running it fully or by using the --dump-env
+flag).
+
+Appendix A - Current Set of Commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	% $HOME/opt/bin/asgsh
+	Type 'exit' to return to the login shell.
+	asgs (none)> help
+
+	Commands:
+	   delete <name>              - deletes named session
+	   edit config                - opens up $ASGS_CONFIG using $EDITOR (if not set, defaults to vi)
+	   list-configs               - lists ASGS configuration files based on year (interactive)
+	   list-sessions              - lists all saved sessions that can be specified by load
+	   load   <name>              - loads a saved session by name
+	   run                        - runs asgs using config file, $ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a session
+	   save   <name>              - saves an asgs named session
+	   set    <param> "<value>"   - sets specified session variables (i.e., variables that do not last after 'exit')
+	     parameters:
+		*  config             - sets ASGS configuration file used by 'run', ($ASGS_CONFIG)
+		*  editor             - sets default editor, ($EDITOR)
+		*  scratchdir         - sets ASGS main script directory used by all underlying scripts, ($SCRATCH)
+		*  scriptdir          - sets ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
+		*  workdir            - sets ASGS main script directory used by all underlying scripts, ($WORK)
+	   show   <param>             - shows specified session variables (i.e., variables that do not last after 'exit')
+	     parameters:
+		*  config             - shows ASGS configuration file used by 'run', ($ASGS_CONFIG)
+		*  editor             - shows what default editor is set to, ($EDITOR)
+		*  scratchdir         - shows ASGS main script directory used by all underlying scripts, ($SCRATCH)
+		*  scriptdir          - shows ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
+		*  workdir            - shows ASGS main script directory used by all underlying scripts, ($WORK)
+	   sq                         - shortcut for "squeue -u $USER" (if squeue is available)
+	   verify                     - verfies Perl and Python environments
+	   exit                       - exits ASGS shell, returns $USER to login shell
+	asgs (none)> 

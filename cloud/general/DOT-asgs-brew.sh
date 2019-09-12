@@ -9,19 +9,26 @@ help() {
 echo
 echo Commands:
 echo "   delete <name>              - deletes named session"
-echo "   load   <name>              - loads a saved session by name"
-echo "   save   <name>              - saves an asgs named session"
+echo "   edit config                - opens up \$ASGS_CONFIG using \$EDITOR (must be set, if not use the 'set editor' command)"
 echo "   list-configs               - lists ASGS configuration files based on year (interactive)"
 echo "   list-sessions              - lists all saved sessions that can be specified by load"
-echo "   run                        - runs asgs using config file, if set (use 'set config /path/to/config' to set this)"
-echo "   set    <param> \"<value>\" - sets specified session variables (i.e., variables that do not last after 'exit')"
+echo "   load   <name>              - loads a saved session by name"
+echo "   run                        - runs asgs using config file, \$ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a session"
+echo "   save   <name>              - saves an asgs named session"
+echo "   set    <param> \"<value>\"   - sets specified session variables (i.e., variables that do not last after 'exit')"
 echo "     parameters:"
-echo "        * 'config'            - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
-echo "        * 'scriptdir'         - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "        *  config             - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+echo "        *  editor             - sets default editor, (\$EDITOR)"
+echo "        *  scratchdir         - sets ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
+echo "        *  scriptdir          - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "        *  workdir            - sets ASGS main script directory used by all underlying scripts, (\$WORK)"
 echo "   show   <param>             - shows specified session variables (i.e., variables that do not last after 'exit')"
 echo "     parameters:"
-echo "        * 'config'            - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
-echo "        * 'scriptdir'         - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "        *  config             - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+echo "        *  editor             - shows what default editor is set to, (\$EDITOR)"
+echo "        *  scratchdir         - shows ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
+echo "        *  scriptdir          - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "        *  workdir            - shows ASGS main script directory used by all underlying scripts, (\$WORK)"
 echo "   sq                         - shortcut for \"squeue -u \$USER\" (if squeue is available)"
 echo "   verify                     - verfies Perl and Python environments"
 echo "   exit                       - exits ASGS shell, returns \$USER to login shell"
@@ -48,6 +55,25 @@ delete() {
   else
     echo no saved session found
   fi
+}
+
+edit() {
+  case "${1}" in
+  config)
+    if [ -z "$ASGS_CONFIG" ]; then
+      echo "\$ASGS_CONFIG is not set. Use 'set config' to specify a config file."
+      return
+    fi
+    if [ -z "$EDITOR" ]; then
+      echo "\$EDITOR is not set. Use 'set editor' to specify a config file."
+      return
+    fi
+    $EDITOR $ASGS_CONFIG
+    ;;
+  *)
+    echo "Only 'edit config' is supported at this time."
+    ;;
+  esac
 }
 
 list-sessions() {
@@ -96,14 +122,14 @@ save() {
     mkdir -p $HOME/.asgs
   fi
   # be very specific about the "session variables" saved
-  if [ -n "${ASGS_CONFIG}" ]; then
-    echo "export ASGS_CONFIG=${ASGS_CONFIG}" > "$HOME/.asgs/$NAME"
-    echo saved current session as \'$NAME\', use \'list-sessions\' to see what others are available to \'load\'
-  else
-    echo "no session variables found to save..."
-    echo "saved variables are:"
-    echo "  ASGS_CONFIG"
-  fi
+  echo "export ASGS_CONFIG=${ASGS_CONFIG}" > "$HOME/.asgs/$NAME"
+  echo "export EDITOR=${EDITOR}"    >> "$HOME/.asgs/$NAME"
+  echo "export SCRATCH=${SCRATCH}"    >> "$HOME/.asgs/$NAME"
+  echo "export SCRIPTDIR=${SCRIPTDIR}"    >> "$HOME/.asgs/$NAME"
+  echo "export WORK=${WORK}"    >> "$HOME/.asgs/$NAME"
+  
+  # update prompt
+  export PS1="asgs ($NAME)> "
 }
 
 set() {
@@ -116,11 +142,23 @@ set() {
     export ASGS_CONFIG=${2}
     echo "ASGS_CONFIG is set to '${ASGS_CONFIG}'"
     ;;
+  editor)
+    export EDITOR=${2}
+    echo "EDITOR is set to '${EDITOR}'"
+    ;;
   scriptdir)
     export SCRIPTDIR=${2} 
     echo "SCRIPTDIR is now set to '${SCRIPTDIR}'"
     ;;
-  *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
+  workdir)
+    export WORK=${2} 
+    echo "WORK is now set to '${WORK}'"
+    ;;
+  scratchdir)
+    export SCRATCH=${2} 
+    echo "SCRATCH is now set to '${SCRATCH}'"
+    ;;
+  *) echo "'set' requires one of the supported parameters: 'config', 'scriptdir'"
     ;;
   esac 
 }
@@ -138,11 +176,32 @@ show() {
       echo "ASGS_CONFIG is not set to anything. Try, 'set config /path/to/asgs/config.sh' first"
     fi
     ;;
+  editor)
+    if [ -n "${EDITOR}" ]; then
+      echo "EDITOR is set to '${EDITOR}'"
+    else
+      echo "EDITOR is not set to anything. Try, 'set config vi' first"
+    fi
+    ;;
   scriptdir)
     if [ -n "${SCRIPTDIR}" ]; then
       echo "SCRIPTDIR is set to '${SCRIPTDIR}'"
     else
-      echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs/config.sh' first"
+      echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs' first"
+    fi
+    ;;
+  workdir)
+    if [ -n "${WORK}" ]; then
+      echo "WORK is set to '${WORK}'"
+    else
+      echo "WORK is not set to anything. Try, 'set config /path/to/work' first"
+    fi
+    ;;
+  scratchdir)
+    if [ -n "${SCRATCH}" ]; then
+      echo "SCRATCH is set to '${SCRATCH}'"
+    else
+      echo "SCRATCH is not set to anything. Try, 'set config /path/to/scratch' first"
     fi
     ;;
   *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
