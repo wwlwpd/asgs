@@ -8,21 +8,23 @@ echo Type \'exit\' to return to the login shell.
 help() {
 echo
 echo Commands:
-echo "   delete <name> - deletes named session"
-echo "   load   <name> - loads a saved session by name"
-echo "   save   <name> - saves an asgs named session"
-echo "   list-configs  - lists ASGS configuration files based on year (interactive)"
-echo "   list-sessions - lists all saved sessions that can be specified by load"
-echo "   run           - runs asgs using config file, if set (use 'set config /path/to/config' to set this)"
-echo "   set           - sets specified session variables (i.e., variables that do not last after 'exit')"
-echo "     subcommands:"
-echo "        * 'config' - sets ASGS configuration file used by 'run'"
-echo "   show          - shows specified session variables (i.e., variables that do not last after 'exit')"
-echo "     subcommands:"
-echo "        * 'config' - shows ASGS configuration file used by 'run'"
-echo "   sq            - shortcut for \"squeue -u \$USER\" (if squeue is available)"
-echo "   verify        - verfies Perl and Python environments"
-echo "   exit          - exits ASGS shell, returns \$USER to login shell"
+echo "   delete <name>              - deletes named session"
+echo "   load   <name>              - loads a saved session by name"
+echo "   save   <name>              - saves an asgs named session"
+echo "   list-configs               - lists ASGS configuration files based on year (interactive)"
+echo "   list-sessions              - lists all saved sessions that can be specified by load"
+echo "   run                        - runs asgs using config file, if set (use 'set config /path/to/config' to set this)"
+echo "   set    <param> \"<value>\" - sets specified session variables (i.e., variables that do not last after 'exit')"
+echo "     parameters:"
+echo "        * 'config'            - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+echo "        * 'scriptdir'         - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "   show   <param>             - shows specified session variables (i.e., variables that do not last after 'exit')"
+echo "     parameters:"
+echo "        * 'config'            - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+echo "        * 'scriptdir'         - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+echo "   sq                         - shortcut for \"squeue -u \$USER\" (if squeue is available)"
+echo "   verify                     - verfies Perl and Python environments"
+echo "   exit                       - exits ASGS shell, returns \$USER to login shell"
 }
 
 list-configs() {
@@ -105,22 +107,29 @@ save() {
 }
 
 set() {
+  if [ -z "${2}" ]; then
+    echo "'set' requires 2 arguments - parameter name and value"
+    return 
+  fi
   case "${1}" in
   config)
-    if [ -n "${2}" ]; then
-      export ASGS_CONFIG=${2}
-      echo "ASGS_CONFIG is set to '${ASGS_CONFIG}'"
-    else
-      echo "'set config' requires a value to assign to ASGS_CONFIG. Use 'show config' to display current value."
-      return 
-    fi
+    export ASGS_CONFIG=${2}
+    echo "ASGS_CONFIG is set to '${ASGS_CONFIG}'"
     ;;
-  *) echo "'set' requires a supported subcommand: 'config'"
+  scriptdir)
+    export SCRIPTDIR=${2} 
+    echo "SCRIPTDIR is now set to '${SCRIPTDIR}'"
+    ;;
+  *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
     ;;
   esac 
 }
 
 show() {
+  if [ -z "${1}" ]; then
+    echo "'set' requires 1 argument - parameter"
+    return 
+  fi
   case "${1}" in
   config)
     if [ -n "${ASGS_CONFIG}" ]; then
@@ -129,7 +138,14 @@ show() {
       echo "ASGS_CONFIG is not set to anything. Try, 'set config /path/to/asgs/config.sh' first"
     fi
     ;;
-  *) echo "'show' requires a supported subcommand: 'config'"
+  scriptdir)
+    if [ -n "${SCRIPTDIR}" ]; then
+      echo "SCRIPTDIR is set to '${SCRIPTDIR}'"
+    else
+      echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs/config.sh' first"
+    fi
+    ;;
+  *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
     ;;
   esac 
 }
