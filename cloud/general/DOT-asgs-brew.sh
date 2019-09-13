@@ -6,41 +6,31 @@ echo Type \'exit\' to return to the login shell.
 # COMMANDS DEFINED AS BASH FUNCTIONS
 
 help() {
-echo
-echo Commands:
-echo "   delete <name>              - deletes named profile"
-echo "   edit config                - opens up \$ASGS_CONFIG using \$EDITOR (must be set, if not use the 'set editor' command)"
-echo "   list-configs               - lists ASGS configuration files based on year (interactive)"
-echo "   list-profiles              - lists all saved profiles that can be specified by load"
-echo "   load   <name>              - loads a saved profile by name"
-echo "   run                        - runs asgs using config file, \$ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile"
-echo "   save   <name>              - saves an asgs named profile"
-echo "   set    <param> \"<value>\"   - sets specified profile variables (i.e., variables that do not last after 'exit')"
-echo "     parameters:"
-echo "        *  config             - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
-echo "        *  editor             - sets default editor, (\$EDITOR)"
-echo "        *  scratchdir         - sets ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
-echo "        *  scriptdir          - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
-echo "        *  workdir            - sets ASGS main script directory used by all underlying scripts, (\$WORK)"
-echo "   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')"
-echo "     parameters:"
-echo "        *  config             - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
-echo "        *  editor             - shows what default editor is set to, (\$EDITOR)"
-echo "        *  scratchdir         - shows ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
-echo "        *  scriptdir          - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
-echo "        *  workdir            - shows ASGS main script directory used by all underlying scripts, (\$WORK)"
-echo "   sq                         - shortcut for \"squeue -u \$USER\" (if squeue is available)"
-echo "   verify                     - verfies Perl and Python environments"
-echo "   exit                       - exits ASGS shell, returns \$USER to login shell"
-}
-
-list-configs() {
-  read -p "Show configs for what year? " year
-  if [ -d $SCRIPTDIR/config/$year ]; then
-    ls $SCRIPTDIR/config/$year/* | less
-  else
-    echo ASGS configs for $year do not exist 
-  fi
+  echo
+  echo Commands:
+  echo "   delete <name>              - deletes named profile"
+  echo "   edit config                - opens up \$ASGS_CONFIG using \$EDITOR (must be set, if not use the 'set editor' command)"
+  echo "   list   <param>             - lists different things"
+  echo "       *  configs             - lists ASGS configuration files based on year (interactive)"
+  echo "       *  profiles            - lists all saved profiles that can be specified by load"
+  echo "   load   <profile-name>      - loads a saved profile by name"
+  echo "   run                        - runs asgs using config file, \$ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile"
+  echo "   save   <name>              - saves an asgs named profile"
+  echo "   set    <param> \"<value>\"   - sets specified profile variables (i.e., variables that do not last after 'exit')"
+  echo "       *  config              - sets ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+  echo "       *  editor              - sets default editor, (\$EDITOR)"
+  echo "       *  scratchdir          - sets ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
+  echo "       *  scriptdir           - sets ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+  echo "       *  workdir             - sets ASGS main script directory used by all underlying scripts, (\$WORK)"
+  echo "   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')"
+  echo "       *  config              - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
+  echo "       *  editor              - shows what default editor is set to, (\$EDITOR)"
+  echo "       *  scratchdir          - shows ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
+  echo "       *  scriptdir           - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+  echo "       *  workdir             - shows ASGS main script directory used by all underlying scripts, (\$WORK)"
+  echo "   sq                         - shortcut for \"squeue -u \$USER\" (if squeue is available)"
+  echo "   verify                     - verfies Perl and Python environments"
+  echo "   exit                       - exits ASGS shell, returns \$USER to login shell"
 }
 
 delete() {
@@ -76,15 +66,30 @@ edit() {
   esac
 }
 
-list-profiles() {
-  if [ ! -d "$HOME/.asgs/" ]; then
-    echo no profiles saved
-  else
-    for profile in $(ls -1 "$HOME/.asgs/" | sort); do
-      echo "- $profile"
-    done
-    return
-  fi
+list() {
+  case "${1}" in
+    configs)
+      read -p "Show configs for what year? " year
+      if [ -d $SCRIPTDIR/config/$year ]; then
+        ls $SCRIPTDIR/config/$year/* | less
+      else
+        echo ASGS configs for $year do not exist 
+      fi
+      ;;
+    profiles)
+      if [ ! -d "$HOME/.asgs/" ]; then
+        echo no profiles saved
+      else
+        for profile in $(ls -1 "$HOME/.asgs/" | sort); do
+          echo "- $profile"
+        done
+        return
+      fi
+      ;;
+    *)
+     echo "'list configs' and 'list profiles' are supported at this time.'"
+     ;;
+  esac 
 }
 
 load() {
@@ -106,6 +111,8 @@ run() {
   if [ -n "${ASGS_CONFIG}" ]; then
     echo "Running ASGS using the config file, '${ASGS_CONFIG}'"
     $SCRIPTDIR/asgs_main.sh -c $ASGS_CONFIG
+    # NOTE: asgs_main.sh automatically extracts $SCRIPTDIR based on where it is located;
+    # this means that asgs_main.sh will respect $SCRIPTDIR set here by virtue of this capability.
   else
     echo "ASGS_CONFIG must be set before the 'run' command can be used";  
     return;
