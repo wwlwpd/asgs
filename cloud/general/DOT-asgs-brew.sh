@@ -10,6 +10,10 @@ help() {
   echo Commands:
   echo "   delete <name>              - deletes named profile"
   echo "   edit config                - opens up \$ASGS_CONFIG using \$EDITOR (must be set, if not use the 'set editor' command)"
+  echo "   goto   <param>             - change current working directory to \$SCRATCH"
+  echo "       *  scratchdir          - change current working directory to \$SCRIPTDIR"
+  echo "       *  scriptdir           - change current working directory to \$WORK"
+  echo "       *  workdir             - change current working directory"
   echo "   list   <param>             - lists different things"
   echo "       *  configs             - lists ASGS configuration files based on year (interactive)"
   echo "       *  profiles            - lists all saved profiles that can be specified by load"
@@ -25,11 +29,17 @@ help() {
   echo "   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')"
   echo "       *  config              - shows ASGS configuration file used by 'run', (\$ASGS_CONFIG)"
   echo "       *  editor              - shows what default editor is set to, (\$EDITOR)"
+  echo "       *  instancename        - shows ASGS instance name that is derived from a valid config file, (\$INSTANCENAME)"
+  echo "       *  propertiesfile      - shows ASGS 'run.properties' file location, derived from rundir; (\$PROPERTIESFILE)"  
+  echo "       *  rundir              - shows ASGS rundir location, read directly from a valid state file, (\$RUNDIR)"
   echo "       *  scratchdir          - shows ASGS main script directory used by all underlying scripts, (\$SCRATCH)"
   echo "       *  scriptdir           - shows ASGS main script directory used by all underlying scripts, (\$SCRIPTDIR)"
+  echo "       *  statefile           - shows ASGS state file location, derived from scratchdir; (\$STATEFILE)"
+  echo "       *  syslog              - shows ASGS log location, read directly from a valid state file, (\$SYSLOG)"
   echo "       *  workdir             - shows ASGS main script directory used by all underlying scripts, (\$WORK)"
   echo "   sq                         - shortcut for \"squeue -u \$USER\" (if squeue is available)"
   echo "   verify                     - verfies Perl and Python environments"
+  echo "   watchlog                   - executes 'tail -f' on syslog"
   echo "   exit                       - exits ASGS shell, returns \$USER to login shell"
 }
 
@@ -62,6 +72,38 @@ edit() {
     ;;
   *)
     echo "Only 'edit config' is supported at this time."
+    ;;
+  esac
+}
+
+goto() {
+  case "${1}" in
+  scratchdir)
+  if [ -e "$SCRATCH" ]; then
+    cd $SCRATCH
+    pwd
+  else
+    echo 'scratchdir not yet defined'
+  fi 
+  ;;
+  scriptdir)
+  if [ "$SCRIPTDIR" ]; then
+    cd $SCRIPTDIR
+    pwd
+  else
+    echo 'scriptdir not yet defined'
+  fi 
+  ;;
+  workdir)
+  if [ "$WORK" ]; then
+    cd $WORKDIR
+    pwd
+  else
+    echo 'workdir not yet defined'
+  fi 
+  ;;
+  *)
+    echo "Only 'scratchdir', 'scriptdir', 'workdir' are supported at this time."
     ;;
   esac
 }
@@ -102,8 +144,45 @@ load() {
     . "$HOME/.asgs/$NAME"
     export PS1="asgs ($NAME)> "
     echo loaded \'$NAME\' into current profile;
+    if [ -n "$ASGS_CONFIG" ]; then
+      # extracts info such as 'instancename' so we can derive the location of the state file, then the log file path and actual run directory
+      _parse_config $ASGS_CONFIG
+    fi
   else
     echo no saved profile found
+  fi
+}
+
+_parse_config() {
+  if [ ! -e "${1}" ]; then
+    echo "warning: config file is set, but the file \'${1}\' does not exist!"
+    return
+  fi
+  # pull out var info the old fashion way...
+  INSTANCENAME=$(grep 'INSTANCENAME=' "${1}" | sed 's/INSTANCENAME=//')
+  echo "config file found, instance name is '$INSTANCENAME'"
+  STATEFILE="$SCRATCH/${INSTANCENAME}.state"
+  echo "loading latest state file inforation from $STATEFILE"
+  _load_state_file $STATEFILE
+}
+
+_load_state_file() {
+  if [ ! -e "${1}" ]; then
+    echo "warning: state file \'${1}\' does not exist!"
+    return
+  fi
+  . $STATEFILE # we only are about RUNDIR and SYSLOG since they do not change from run to run 
+  if [ -z "$RUNDIR" ]; then
+    echo "warning: state file does not contain 'RUNDIR' information"
+  fi
+  if [ -z "$SYSLOG" ]; then
+    echo "warning: state file does not contain 'SYSLOG' information"
+  fi
+  echo "... found 'RUNDIR' information, set to '$RUNDIR'"
+  echo "... found 'SYSLOG' information, set to '$SYSLOG'"
+  PROPERTIESFILE="$RUNDIR/run.properties"
+  if [ -e "$PROPERTIESFILE" ]; then
+    echo "... found 'run.properties' file, at '$PROPERTIESFILE'"
   fi
 }
 
@@ -201,6 +280,20 @@ show() {
       echo "EDITOR is not set to anything. Try, 'set config vi' first"
     fi
     ;;
+  instancename)
+    if [ -n "${INSTANCENAME}" ]; then
+      echo "INSTANCENAME is set to '${INSTANCENAME}'"
+    else
+      echo "INSTANCENAME is not set to anything. Have you set the config file yet?"
+    fi
+    ;;
+  rundir)
+    if [ -n "${RUNDIR}" ]; then
+      echo "RUNDIR is set to '${RUNDIR}'"
+    else
+      echo "RUNDIR is not set to anything. Does state file exist?" 
+    fi
+    ;;
   scriptdir)
     if [ -n "${SCRIPTDIR}" ]; then
       echo "SCRIPTDIR is set to '${SCRIPTDIR}'"
@@ -208,18 +301,32 @@ show() {
       echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs' first"
     fi
     ;;
-  workdir)
-    if [ -n "${WORK}" ]; then
-      echo "WORK is set to '${WORK}'"
-    else
-      echo "WORK is not set to anything. Try, 'set config /path/to/work' first"
-    fi
-    ;;
   scratchdir)
     if [ -n "${SCRATCH}" ]; then
       echo "SCRATCH is set to '${SCRATCH}'"
     else
       echo "SCRATCH is not set to anything. Try, 'set config /path/to/scratch' first"
+    fi
+    ;;
+  statefile)
+    if [ -n "${STATEFILE}" ]; then
+      echo "STATEFILE is set to '${STATEFILE}'"
+    else
+      echo "STATEFILE is not set to anything. Does state file exist?"
+    fi
+    ;;
+  syslog)
+    if [ -n "${SYSLOG}" ]; then
+      echo "SYSLOG is set to '${SYSLOG}'"
+    else
+      echo "SYSLOG is not set to anything. Does state file exist?"
+    fi
+    ;;
+  workdir)
+    if [ -n "${WORK}" ]; then
+      echo "WORK is set to '${WORK}'"
+    else
+      echo "WORK is not set to anything. Try, 'set config /path/to/work' first"
     fi
     ;;
   *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
@@ -233,6 +340,16 @@ sq() {
   else
     echo The `squeue` utility has not been found in your PATH \(slurm is not available\)
   fi
+}
+
+watchlog() {
+  if [ -z "$SYSLOG" ]; then
+    echo "warning: log file "$SYSLOG" does not exist!"
+    return
+  fi
+  echo "type 'ctrl-c' to end"
+  echo "tail -f $SYSLOG"
+  tail -f $SYSLOG
 }
 
 verify() {

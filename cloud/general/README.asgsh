@@ -108,27 +108,37 @@ Appendix A - Current Set of Commands
 
 	% $HOME/opt/bin/asgsh
 	Commands:
-	   delete <name>             - deletes named profile
-	   edit config               - opens up $ASGS_CONFIG using $EDITOR (must be set, if not use the 'set editor' command)
-	   list   <param>            - lists different things
-	       *  configs            - lists ASGS configuration files based on year (interactive)
-	       *  profiles           - lists all saved profiles that can be specified by load
-	   load   <profile-name>     - loads a saved profile by name
-	   run                       - runs asgs using config file, $ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile
-	   save   <name>             - saves an asgs named profile
-	   set    <param> "<value>"  - sets specified profile variables (i.e., variables that do not last after 'exit')
-	       *  config             - sets ASGS configuration file used by 'run', ($ASGS_CONFIG)
-	       *  editor             - sets default editor, ($EDITOR)
-	       *  scratchdir         - sets ASGS main script directory used by all underlying scripts, ($SCRATCH)
-	       *  scriptdir          - sets ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
-	       *  workdir            - sets ASGS main script directory used by all underlying scripts, ($WORK)
-	   show   <param>            - shows specified profile variables (i.e., variables that do not last after 'exit')
-	       *  config             - shows ASGS configuration file used by 'run', ($ASGS_CONFIG)
-	       *  editor             - shows what default editor is set to, ($EDITOR)
-	       *  scratchdir         - shows ASGS main script directory used by all underlying scripts, ($SCRATCH)
-	       *  scriptdir          - shows ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
-	       *  workdir            - shows ASGS main script directory used by all underlying scripts, ($WORK)
-	   sq                        - shortcut for "squeue -u $USER" (if squeue is available)
-	   verify                    - verfies Perl and Python environments
-	   exit                      - exits ASGS shell, returns $USER to login shell
+	   delete <name>              - deletes named profile
+	   edit config                - opens up $ASGS_CONFIG using $EDITOR (must be set, if not use the 'set editor' command)
+	   goto   <param>             - change current working directory to $SCRATCH
+	       *  scratchdir          - change current working directory to $SCRIPTDIR
+	       *  scriptdir           - change current working directory to $WORK
+	       *  workdir             - change current working directory
+	   list   <param>             - lists different things
+	       *  configs             - lists ASGS configuration files based on year (interactive)
+	       *  profiles            - lists all saved profiles that can be specified by load
+	   load   <profile-name>      - loads a saved profile by name
+	   run                        - runs asgs using config file, $ASGS_CONFIG must be set (see 'set config'); most handy after 'load'ing a profile
+	   save   <name>              - saves an asgs named profile
+	   set    <param> "<value>"   - sets specified profile variables (i.e., variables that do not last after 'exit')
+	       *  config              - sets ASGS configuration file used by 'run', ($ASGS_CONFIG)
+	       *  editor              - sets default editor, ($EDITOR)
+	       *  scratchdir          - sets ASGS main script directory used by all underlying scripts, ($SCRATCH)
+	       *  scriptdir           - sets ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
+	       *  workdir             - sets ASGS main script directory used by all underlying scripts, ($WORK)
+	   show   <param>             - shows specified profile variables (i.e., variables that do not last after 'exit')
+	       *  config              - shows ASGS configuration file used by 'run', ($ASGS_CONFIG)
+	       *  editor              - shows what default editor is set to, ($EDITOR)
+	       *  instancename        - shows ASGS instance name that is derived from a valid config file, ($INSTANCENAME)
+	       *  propertiesfile      - shows ASGS 'run.properties' file location, derived from rundir; ($PROPERTIESFILE)
+	       *  rundir              - shows ASGS rundir location, read directly from a valid state file, ($RUNDIR)
+	       *  scratchdir          - shows ASGS main script directory used by all underlying scripts, ($SCRATCH)
+	       *  scriptdir           - shows ASGS main script directory used by all underlying scripts, ($SCRIPTDIR)
+	       *  statefile           - shows ASGS state file location, derived from scratchdir; ($STATEFILE)
+	       *  syslog              - shows ASGS log location, read directly from a valid state file, ($SYSLOG)
+	       *  workdir             - shows ASGS main script directory used by all underlying scripts, ($WORK)
+	   sq                         - shortcut for "squeue -u $USER" (if squeue is available)
+	   verify                     - verfies Perl and Python environments
+	   watchlog                   - executes 'tail -f' on syslog 
+	   exit                       - exits ASGS shell, returns $USER to login shell
 	asgs (none)> 
