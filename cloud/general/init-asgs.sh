@@ -25,7 +25,7 @@ echo "vagrant        - vagrant/virtual box (local workstation)"
 default_platform_hint=" "
 if [ "$USER" = 'vagrant' ]; then
   default_platform="vagrant"
-  default_platform_hint="[$default_platform] "
+  default_platform_hint=" [$default_platform] "
 fi
 echo
 read -p "Which platform environment would you like to use for ASGS bootstrapping?$default_platform_hint" platform
@@ -76,7 +76,7 @@ echo Bootstrapping ASGS for installation...
 env_dispatch $platform
 
 # $MAKEJOBS is defined in platforms.sh
-cmd="./cloud/general/asgs-brew.pl --install-path=$installdir --compiler=$compiler --machinename=$platform --make-jobs=$MAKEJOBS --update-shell"
+cmd="./cloud/general/asgs-brew.pl --install-path=$installdir --compiler=$compiler --machinename=$platform --make-jobs=$MAKEJOBS"
 
 echo
 echo $cmd
