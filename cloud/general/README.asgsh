@@ -8,6 +8,9 @@ following command:
 
   % $HOME/opt/bin/asgsh
 
+[It us suggested that '$HOME/opt/bin' (or the "--install-path") be added to
+the login shell PATH via $HOME/.bash_profile.]
+
 You will then see this prompt:
 
   asgs (none)>
@@ -87,23 +90,34 @@ Loading a profile when none is yet loaded would look like:
 At the time of this writing, the following environmental variables can be directly
 managed and saved via asgsh.
 
-* ASGS_CONFIG - used by 'run' to pass asgs_main.sh its configuration argument (-c)
-* EDITOR      - used by 'edit' command
-* SCRIPTDIR   - used by asgs_main.sh to know where to find helper scripts and utilities
-                it is also used by the 'run' command as the path to in $SCRIPTDIR/asgs_main.sh;
-                asgs_main.sh then is able to determine $SCRIPTDIR automatically based on call path. 
-* SCRATCH     - used by asgs_main.sh, where models are executing from
-* WORK        - used by asgs_main.sh, some scripts for sharing output across systems
+* ASGS_CONFIG    - used by 'run' to pass asgs_main.sh its configuration argument (-c)
+* EDITOR         - used by 'edit' command
+* SCRIPTDIR      - used by asgs_main.sh to know where to find helper scripts and utilities
+                   it is also used by the 'run' command as the path to in $SCRIPTDIR/asgs_main.sh;
+                   asgs_main.sh then is able to determine $SCRIPTDIR automatically based on call path.
+* SCRATCH        - used by asgs_main.sh, where models are executing from
+* WORK           - used by asgs_main.sh, some scripts for sharing output across system
+
+The following variables are set and derived once a configuration file has been set and
+INSTANCE name has been determined out of this file:
+
+* STATEFILE      - contains key information about the current ASGS instance
+* RUNDIR         - parent directory where ADCIRC's running an writing output, read from state file
+                 - the initialization of the models (hind/nowcast) and each subsequent advisory forecast
+                 - scenario is contained as sub directories here
+* SYSLOG         - full path to the main log file, used by 'watchlog'
+* PROPERTIESFILE - main run.properties file output by ASGS; current version of the shell does not make
+                   these variables directly available in the environment, but this could change
  
 Updating ASGS Shell
 ~~~~~~~~~~~~~~~~~~~
 
 The shell is created whenever asgs-brew.pl is run, this includes when it is run
-with the --dump-env flag. Updated shells will come with updated versions of
+with the --update-shell flag. Updated shells will come with updated versions of
 the ASGS system via asgs-brew.pl (running it fully or by using the --update-shell
 flag).
 
-Appendix A - Current Set of Commands
+Appendix A - Current Set of Commands (this may be outdated, see 'help' for most up to date list)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	% $HOME/opt/bin/asgsh

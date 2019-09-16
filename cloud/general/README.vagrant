@@ -22,10 +22,16 @@ AAAAAAA                   AAAAAAASSSSSSSSSSSSSSS           GGGGGG   GGGG SSSSSSS
 
 NOTICE:
 
-This README is meant to provide instructions for the user once they
-have initialized the Vagrant managed virtual machine. If you are
-reading this and are not on the virtual machine that has been created
-by using vagrant on the host computer, then this doesn't apply.
+This README is meant to provide instructions for the user once they have
+initialized the Vagrant managed virtual machine. If you are reading this
+and are not on the virtual machine that has been created by using vagrant
+on the host computer, then this doesn't apply.
+
+IMPORTANT:
+
+Access to ADCIRC source code is not distributed with ASGS. The instructions
+below assume access to the ADCIRC Github repository OR that you have placed
+the ADCIRC source directory into your $HOME directory by other means.
 
 ~~~~~~~~~
 
@@ -40,15 +46,27 @@ environment from Github.
 
 Steps after logging into the vagrant instance:
 
-1. $HOME/init-asgs.sh
+1. bootstrap asgs,
+
+      $HOME/init-asgs.sh
+
 2. wait while the following happens:
   a. the correct git branch is checked out
-  b. asgs-brew.pl is run
-3. run the $HOME/init-adcirc.sh script to build adcirc related executables
+  b. asgs-brew.pl is run, the asgs interactive shell is installed
+  c. adcirc and swan are compiled (see notes on compiling ADCIRC and SWAN below)
 
-a. git clones the private git repository for adcirc-cg (one's Github user
-will require proper permissions, and they will be prompted for their github
-username and password.
+
+Notes
+~~~~~
+
+I. Compiling ADCIRC and SWAN:
+
+a. if $HOME/adcirc-cg doesn't exist, the script git clones the private git
+repository for adcirc-cg (one's Github user will require proper permissions,
+and they will be prompted for their github username and password. Alternatively,
+if the adcirc source directory is already there (e.g., you get it from other
+means), then there will be no attempt to get it from Github. IN ALL CASES,
+ACCESS TO ADCIRC SOURCE CODE IS RESTRICTED AND NOT DISTRIBUTED BY ASGS.  
 
 b. changes directory to the one created by the git clone
 
@@ -62,6 +80,8 @@ the parallel versions of adcirc and swan
 After this has been completed successfully, the user should be ready to
 run ASGS, assuming they have a working ASGS configuration file and all input
 files located in the proper directories.
+
+--
 
 To see this notice again,
 
