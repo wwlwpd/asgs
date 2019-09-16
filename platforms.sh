@@ -60,6 +60,7 @@ init_supermike()
      ADCIRCDIR=${HOME}/adcirc-cg/jasonfleming/v53release/work # ADCIRC executables
      SWANDIR=${HOME}/adcirc-cg/jasonfleming/v53release/swan   # SWAN executables
   fi
+  MAKEJOBS=8
 }
 #
 init_queenbee()
@@ -122,6 +123,7 @@ init_queenbee()
   # dialog box to ask for a password; it will interactively ask for
   # a password instead
   unset SSH_ASKPASS
+  MAKEJOBS=8
 }
 #
 init_rostam()
@@ -162,6 +164,7 @@ init_rostam()
   #module load mpi/mpich-3.0-x86_64
   module purge 
   module load impi/2017.3.196 
+  MAKEJOBS=8
 }
 init_supermic()
 { #<- can replace the following with a custom script
@@ -225,6 +228,7 @@ init_supermic()
   module purge
   $PLATFORMMODULES
   $SERIALMODULES
+  MAKEJOBS=8
 }
 init_pod()
 { #<- can replace the following with a custom script
@@ -280,6 +284,7 @@ init_pod()
   module purge
   $PLATFORMMODULES
   $SERIALMODULES
+  MAKEJOBS=8
 }
 init_hatteras()
 { #<- can replace the following with a custom script
@@ -371,6 +376,7 @@ init_hatteras()
   $PLATFORMMODULES
   $PARALLELMODULES
   $SERIALMODULES
+  MAKEJOBS=8
 }
 #
 init_stampede2()
@@ -439,6 +445,7 @@ init_stampede2()
   # for the automated slide deck generator
   #   (installing pptx did not work -- it was not found) 
   #   pip install --user python-pptx
+  MAKEJOBS=8
 }
 #
 init_lonestar()
@@ -512,7 +519,14 @@ init_lonestar()
   # btw git on lonestar5 is messed up when it outputs things like diffs,
   # found the solution:
   # git config --global core.pager "less -r"
+  MAKEJOBS=8
 }
+
+# placeholder for vagrant bootstrap
+init_vagrant() {
+  MAKEJOBS=2
+}
+
 init_desktop()
 {
   THIS="platforms.sh>env_dispatch()>init_desktop()"
@@ -539,9 +553,10 @@ init_desktop()
   ARCHIVEBASE=$SCRATCHDIR
   ARCHIVEDIR=$SCRATCHDIR
   TDS=(renci_tds)
+  MAKEJOBS=1
 }
 
-init_desktop-serial()
+init_desktop_serial() # changed from init_desktop-serial due to bash complaints 
 {
   THIS="platforms.sh>env_dispatch()>init_desktop-serial()"
   scenarioMessage "$THIS: Setting platforms-specific parameters."
@@ -568,6 +583,7 @@ init_desktop-serial()
   ARCHIVEBASE=$SCRATCHDIR
   ARCHIVEDIR=$SCRATCHDIR
   TDS=(renci_tds)
+  MAKEJOBS=1
 }
 
 init_Poseidon()
@@ -583,6 +599,7 @@ init_Poseidon()
   ARCHIVE=enstorm_pedir_removal.sh
   ARCHIVEBASE=$SCRATCHDIR
   ARCHIVEDIR=$SCRATCHDIR
+  MAKEJOBS=1
 }
 init_penguin()
 { #<- can replace the following with a custom script
@@ -597,11 +614,13 @@ init_penguin()
   QSCRIPT=penguin.template.pbs
   QSCRIPTGEN=penguin.pbs.pl
   PPN=40
+  MAKEJOBS=8
 }
 init_test()
 { #<- can replace the following with a custom script
   QUEUESYS=Test
   NCPU=-1
+  MAKEJOBS=1
 }
 #
 # Writes properties related to the combination of the HPC platform, the Operator, 
@@ -781,9 +800,12 @@ env_dispatch() {
   "rostam") allMessage "$THIS: rostam configuration found."
           init_rostam
            ;;
+  "vagrant") allMessage "$THIS: vagrant configuration found."
+          init_vagrant
+           ;; 
   "test") allMessage "$THIS: test environment (default) configuration found."
           init_test
-          ;;
+           ;;
   *) fatal "$THIS: '$HPCENVSHORT' is not a supported environment; currently supported options: stampede2, lonestar, supermike, queenbee, supermic, hatteras, desktop, desktop-serial, su_tds, lsu_ccr_tds, renci_tds, tacc_tds"
      ;;
   esac

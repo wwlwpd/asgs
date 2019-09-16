@@ -50,7 +50,9 @@ Steps after logging into the vagrant instance:
 
       $HOME/init-asgs.sh
 
-2. wait while the following happens:
+2. answer some questions about the current platform and preferences
+
+3. wait while the following happens:
   a. the correct git branch is checked out
   b. asgs-brew.pl is run, the asgs interactive shell is installed
   c. adcirc and swan are compiled (see notes on compiling ADCIRC and SWAN below)
