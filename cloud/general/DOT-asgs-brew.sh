@@ -2,21 +2,6 @@
 # xxx DO NOT CUSTOMIZE THIS FILE, IT WILL BE OVERWRITTEN NEXT TIME asgs-brew.pl IS RUN xxx
 export PS1='asgs (none)> '
 clear
-
-# initializing ASGS environment and platform, based on $MACHINENAME
-if [ -e "$SCRIPTDIR/monitoring/logging.sh" ]; then
-  echo "including functions defined in $SCRIPTDIR/monitoring/logging.sh"
-  . $SCRIPTDIR/monitoring/logging.sh 
-  if [ -e "$SCRIPTDIR/platforms.sh" ]; then
-    echo "including functions defined in $SCRIPTDIR/platforms.sh"
-    . $SCRIPTDIR/platforms.sh
-    env_dispatch $MACHINENAME
-  else
-    echo "warning: could not find $SCRIPTDIR/platforms.sh"
-  fi
-else
-  echo "warning: could not find $SCRIPTDIR/monitoring/logging.sh"
-fi
 echo Type \'exit\' to return to the login shell.
 
 # COMMANDS DEFINED AS BASH FUNCTIONS
