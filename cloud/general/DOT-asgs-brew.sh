@@ -2,6 +2,21 @@
 # xxx DO NOT CUSTOMIZE THIS FILE, IT WILL BE OVERWRITTEN NEXT TIME asgs-brew.pl IS RUN xxx
 export PS1='asgs (none)> '
 clear
+
+# initializing ASGS environment and platform, based on $MACHINENAME
+if [ -e "$SCRIPTDIR/monitoring/logging.sh" ]; then
+  echo "including functions defined in $SCRIPTDIR/monitoring/logging.sh"
+  . $SCRIPTDIR/monitoring/logging.sh 
+  if [ -e "$SCRIPTDIR/platforms.sh" ]; then
+    echo "including functions defined in $SCRIPTDIR/platforms.sh"
+    . $SCRIPTDIR/platforms.sh
+    env_dispatch $MACHINENAME
+  else
+    echo "warning: could not find $SCRIPTDIR/platforms.sh"
+  fi
+else
+  echo "warning: could not find $SCRIPTDIR/monitoring/logging.sh"
+fi
 echo Type \'exit\' to return to the login shell.
 
 # COMMANDS DEFINED AS BASH FUNCTIONS
@@ -80,6 +95,14 @@ edit() {
 
 goto() {
   case "${1}" in
+  rundir)
+  if [ -e "$RUNDIR" ]; then
+    cd $RUNDIR
+    pwd
+  else
+    echo 'rundir not yet defined'
+  fi 
+  ;;
   scratchdir)
   if [ -e "$SCRATCH" ]; then
     cd $SCRATCH
@@ -105,7 +128,7 @@ goto() {
   fi 
   ;;
   *)
-    echo "Only 'scratchdir', 'scriptdir', 'workdir' are supported at this time."
+    echo "Only 'rundir', 'scratchdir', 'scriptdir', 'workdir' are supported at this time."
     ;;
   esac
 }
@@ -276,7 +299,7 @@ set() {
     export SCRATCH=${2} 
     echo "SCRATCH is now set to '${SCRATCH}'"
     ;;
-  *) echo "'set' requires one of the supported parameters: 'config', 'scriptdir'"
+  *) echo "'set' requires one of the supported parameters: 'config', 'editor', 'scratchdir', 'scriptdir', or 'workdir'"
     ;;
   esac 
 }
@@ -315,18 +338,18 @@ show() {
       echo "RUNDIR is not set to anything. Does state file exist?" 
     fi
     ;;
-  scriptdir)
-    if [ -n "${SCRIPTDIR}" ]; then
-      echo "SCRIPTDIR is set to '${SCRIPTDIR}'"
-    else
-      echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs' first"
-    fi
-    ;;
   scratchdir)
     if [ -n "${SCRATCH}" ]; then
       echo "SCRATCH is set to '${SCRATCH}'"
     else
       echo "SCRATCH is not set to anything. Try, 'set config /path/to/scratch' first"
+    fi
+    ;;
+  scriptdir)
+    if [ -n "${SCRIPTDIR}" ]; then
+      echo "SCRIPTDIR is set to '${SCRIPTDIR}'"
+    else
+      echo "SCRIPTDIR is not set to anything. Try, 'set config /path/to/asgs' first"
     fi
     ;;
   statefile)
@@ -350,7 +373,8 @@ show() {
       echo "WORK is not set to anything. Try, 'set config /path/to/work' first"
     fi
     ;;
-  *) echo "'show' requires one of the supported parameters: 'config', 'scriptdir'"
+  *) echo "'show' requires one of the supported parameters: 'config', 'editor', 'rundir', 'scratchdir', 'scriptdir',"
+     echo "'statefile', 'syslog', or 'workdir'"
     ;;
   esac 
 }
