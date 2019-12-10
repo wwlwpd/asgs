@@ -26,25 +26,8 @@ sub new {
     return $self;
 }
 
-sub run {
-    my ( $self, $args_ref ) = @_;
-    my $HOME     = ( getpwuid $> )[7];
-    my $opts_ref = {
-        compiler       => q{gfortran},
-        'install-path' => qq{$HOME/opt},
-        home           => $HOME,
-        'make-jobs'    => 1,
-
-    };
-    my $ret = Getopt::Long::GetOptionsFromArray(
-        $args_ref, $opts_ref,
-        q{clean}, q{compiler=s}, q{skip-steps=s}, q{update-shell}, q{force}, q{home}, q{install-path=s}, q{list-steps}, q{machinename=s}, q{make-jobs=i},
-    );
-
-    die $@ if not $ret;
-
-    if ( not $opts_ref->{compiler} or not $opts_ref->{machinename} ) {
-        print qq{
+sub _get_help {
+  return qq{
 Usage:
 
     ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME --force --clean --list-steps --skip-steps]
@@ -61,7 +44,36 @@ More Help and Information:
 
     \$ perldoc path/to/asgs-brew.pl
 
-};
+  };
+}
+
+sub run {
+    my ( $self, $args_ref ) = @_;
+    my $HOME     = ( getpwuid $> )[7];
+    my $opts_ref = {
+        compiler       => q{gfortran},
+        'install-path' => qq{$HOME/opt},
+        home           => $HOME,
+        'make-jobs'    => 1,
+
+    };
+
+    local $@;
+    my $ret = Getopt::Long::GetOptionsFromArray(
+        $args_ref, $opts_ref,
+        q{clean}, q{compiler=s}, q{skip-steps=s}, q{update-shell}, q{force}, q{home}, q{install-path=s}, q{list-steps}, q{machinename=s}, q{make-jobs=i}, q{run-steps=s},
+    );
+
+    die $@ if not $ret;
+    my $errmsg;
+    if ( not $opts_ref->{compiler} or not $opts_ref->{machinename} ) {
+      $errmsg = qq{--compiler and --machinename flags are required\n}
+    }
+    elsif ( $opts_ref->{'skip-steps'} and $opts_ref->{'run-steps'} ) {
+      $errmsg = qq{--skip-steps can't be used with --run-steps\n}; 
+    }
+    if ($errmsg) {
+        warn $self->_get_help();
         exit 255;    # die's exit code
     }
 
@@ -77,14 +89,20 @@ More Help and Information:
 sub _process_opts {
     my ( $self, $opts_ref ) = @_;
 
-    # add to list of steps to skip - this is to assist in debugging only, not to affect the
-    # flow of the building of ASGS
+    # determine run steps
     if ( $opts_ref->{'skip-steps'} ) {
         for my $step ( split ',', $opts_ref->{'skip-steps'} ) {
             ++$SKIP_STEPS_LIST->{$step};
         }
     }
-
+    elsif ( $opts_ref->{'run-steps'} ) {
+        foreach my $step_ref (@{$self->get_steps($opts_ref)}) {
+            ++$SKIP_STEPS_LIST->{$step_ref->{key}};
+        }
+        for my $step ( split ',', $opts_ref->{'run-steps'} ) {
+            delete $SKIP_STEPS_LIST->{$step};
+        }
+    }
     return;
 }
 
