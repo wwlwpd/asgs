@@ -599,8 +599,9 @@ sub get_steps {
             name        => q{Install Python modules},
             description => q{Uses `pip` and system python to install: pika, netCDF4, and python-pptx python modules.},
             pwd         => q{./},
-            command             => q{pip install --user pika; pip install --user netCDF4; pip install --user python-pptx}, 
-            clean_command       => q{echo there is no clean command for this step},
+            command             => q{pip install --user pika; pip install --user numpy -I; pip install --user netCDF4; pip install --user python-pptx}, 
+# todo: make --clean accept sub refs
+            clean_command       => qq{rm -rfv $home/.local $home/.cache},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
             postcondition_check => sub { 
