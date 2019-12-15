@@ -599,9 +599,12 @@ sub get_steps {
             name        => q{Install Python modules},
             description => q{Uses `pip` and system python to install: pika, netCDF4, and python-pptx python modules.},
             pwd         => q{./},
-            command             => q{pip install --user pika; pip install --user numpy -I; pip install --user netCDF4; pip install --user python-pptx}, 
+            command             => q{pip install --user numpy -I; pip install --user pika -I; pip install --user netCDF4 -I; pip install --user python-pptx -I}, 
 # todo: make --clean accept sub refs
             clean_command       => qq{rm -rfv $home/.local $home/.cache},
+            export_ENV => {
+                PYTHONPATH      => { value => qq{$home/.local/lib/python2.7/site-packages/}, how => q{prepend} },
+            },
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
             postcondition_check => sub { 
