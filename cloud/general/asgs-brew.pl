@@ -388,6 +388,7 @@ sub get_steps {
                 PATH            => { value => qq{$install_path/bin},       how => q{prepend} },
                 LIBRARY_PATH    => { value => qq{$install_path/lib},       how => q{prepend} },
                 LD_LIBRARY_PATH => { value => qq{$install_path/lib},       how => q{prepend} },
+                LD_RUN_PATH     => { value => qq{$install_path/lib},       how => q{prepend} },
                 LD_INCLUDE_PATH => { value => qq{$install_path/include},   how => q{prepend} },
                 MACHINENAME     => { value => qq{$machinename},            how => q{replace} },
                 ADCCOMPILER     => { value => qq{$compiler},               how => q{replace} },
@@ -433,8 +434,8 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                CPPFLAGS        => { value => qq{-I$install_path/include}, how => q{replace} },
-                LDFLAGS         => { value => qq{-L$install_path/lib},     how => q{replace} },
+                CPPFLAGS         => { value => qq{ -I$install_path/include}, how => q{append} },
+                LDFLAGS          => { value => qq{ -L$install_path/lib},     how => q{append} },
             },
             skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
             precondition_check => sub { 1 },    # just a "1" indicates no checking is done
@@ -482,7 +483,7 @@ sub get_steps {
             pwd         => q{./},
 
             # -j > 1 breaks this makefile
-            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
+            command             => qq{make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=gfortran},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -493,7 +494,7 @@ sub get_steps {
             name                => q{Step for in output/cpra_postproc},
             description         => q{Runs the makefile and builds associated utilities in the output/cpra_postproc directory},
             pwd                 => q{./output/cpra_postproc},
-            command             => qq{make clean && make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make -j $makejobs NETCDF_CAN_DEFLATE=enable NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -506,7 +507,7 @@ sub get_steps {
             pwd         => q{./output},
 
             # -j > 1 breaks this makefile
-            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -520,7 +521,7 @@ sub get_steps {
             name                => q{Step for in util/},
             description         => q{Runs the makefile and builds all associated utilities in the util/ directory.},
             pwd                 => q{./util},
-            command             => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -531,7 +532,7 @@ sub get_steps {
             name                => q{Step for in util/input/mesh},
             description         => q{Runs the makefile and builds all associated util/input/mesh in the util/ directory.},
             pwd                 => qq{./util/input/mesh},
-            command             => qq{make clean && make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make -j $makejobs NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
@@ -547,15 +548,15 @@ sub get_steps {
             pwd         => q{./util/input/nodalattr},
 
             # -j > 1 breaks this makefile
-            command             => qq{make clean && make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
+            command             => qq{make -j 1 NETCDFPATH=$install_path NETCDF=enable NETCDF4=enable NETCDF4_COMPRESSION=enable MACHINENAME=$machinename compiler=$compiler},
             clean_command       => q{make clean},
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 },
             postcondition_check => sub { my ( $op, $opts_ref ) = @_; return -e qq{./convertna.x}; },
         },
         {
-            key           => q{perlbrew},
-            name          => q{Step for perlbrew and perl for ASGS},
+            key           => q{perl},
+            name          => q{Step for perlbrew and perl for ASGS using perlbrew},
             description   => q{Installs local Perl version used for ASGS.},
             pwd           => q{./},
             command       => q{bash ./cloud/general/init-perlbrew.sh},
@@ -581,7 +582,7 @@ sub get_steps {
         {
             key                 => q{perl-modules},
             name                => q{Step for installing required Perl modules},
-            description         => q{Installs local Perl modules used for ASGS.},
+            description         => q{Installs Perl modules used for ASGS.},
             pwd                 => q{./},
             command             => q{bash ./cloud/general/init-perl-modules.sh},
             clean_command       => q{},
@@ -595,15 +596,16 @@ sub get_steps {
             },
         },
         {
-            key         => q{python},
-            name        => q{Install Python modules},
-            description => q{Uses `pip` and system python to install: pika, netCDF4, and python-pptx python modules.},
-            pwd         => q{./},
-            command             => q{pip install --user numpy -I; pip install --user pika -I; pip install --user netCDF4 -I; pip install --user python-pptx -I}, 
+            key           => q{python},
+            name          => q{Step for installing Python 2.7.17 and required modules},
+            description   => q{Install Python 2.7.17 locally and install required modules},
+            pwd           => q{./},
+            command             => qq{bash ./cloud/general/init-python.sh install $install_path}, 
 # todo: make --clean accept sub refs
-            clean_command       => qq{rm -rfv $home/.local $home/.cache},
-            export_ENV => {
-                PYTHONPATH      => { value => qq{$home/.local/lib/python2.7/site-packages/}, how => q{prepend} },
+            clean_command => qq{bash ./cloud/general/init-python.sh clean $install_path}, 
+            export_ENV    => {
+                PYTHONPATH      => { value => qq{$install_path/python/2.7.17},                      how => q{replace} },
+                PATH            => { value => qq{$install_path/python/2.7.17/bin:$home/.local/bin}, how => q{prepend} },
             },
             skip_if             => sub { 0 },
             precondition_check  => sub { 1 }, # for now, assuming success; should have a simple python script that attempts to load all of these modules
@@ -698,11 +700,11 @@ This flag is for really for debugging so that one may target a specific step,
 it is not meant for the general run case of building up the ASGS environment;
 asgs-brew.pl is meant to be run fully. It accepts a comma delimited list
 of run step keys (no spaces) to skip. For example, if one wished to skip
-the C<perlbrew>, C<openmpi>, and C<hdf5-netcdf> steps and begin with the
+the C<perl>, C<openmpi>, and C<hdf5-netcdf> steps and begin with the
 C<wgrib2> step - but continue through the rest of the list, the flag would
 be specificed as,
 
-   --skip-steps=perlbrew,openmpi,hdf5-netcdf
+   --skip-steps=perl,openmpi,hdf5-netcdf
 
 To get the list of keys, use the C<--list-keys> option.
 
