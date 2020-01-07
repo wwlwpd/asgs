@@ -30,19 +30,23 @@ sub _get_help {
   return qq{
 Usage:
 
-    ./asgs-brew.pl --machinename <MachineName> --compiler <CompilerFamily> [--install-path some/path --home /path/other/than/user/\$HOME --force --clean --list-steps --skip-steps --run-steps]
+    $0 --machinename <MachineName> --compiler <CompilerFamily> [ --install-path some/path --home /path/other/than/user/\$HOME --force --clean [ --list-steps | --skip-steps | --run-steps ] ]
 
 Required Flags:
 
     --compiler, --machinename
 
-Note:
+Reset asgsh with clean environment:
 
-    --install-path if not specified defaults to \$HOME/opt
+    $0 --machinename <MachineName> --compiler <CompilerFamily> --run-steps setup-env
 
 More Help and Information:
 
     \$ perldoc $0 
+
+Note:
+
+    --install-path if not specified defaults to \$HOME/opt
 
   };
 }
@@ -67,16 +71,19 @@ sub run {
         q{clean}, q{compiler=s}, q{skip-steps=s}, q{update-shell}, q{force}, q{home}, q{install-path=s}, q{list-steps}, q{machinename=s}, q{make-jobs=i}, q{run-steps=s},
     );
 
-    die $@ if not $ret;
     my $errmsg;
-    if ( not $opts_ref->{compiler} or not $opts_ref->{machinename} ) {
+    if ( not $ret ) {
+      $errmsg = qq{An unrecognized option was passed\n}; 
+    }
+    elsif ( not $opts_ref->{compiler} or not $opts_ref->{machinename} ) {
       $errmsg = qq{--compiler and --machinename flags are required\n}
     }
     elsif ( $opts_ref->{'skip-steps'} and $opts_ref->{'run-steps'} ) {
       $errmsg = qq{--skip-steps can't be used with --run-steps\n}; 
     }
     if ($errmsg) {
-        warn $self->_get_help();
+        warn $errmsg; 
+        print $self->_get_help();
         exit 255;    # die's exit code
     }
 
@@ -448,8 +455,8 @@ sub get_steps {
 
             # augment existing %ENV (cumulative)
             export_ENV => {
-                CPPFLAGS         => { value => qq{ -I$install_path/include}, how => q{append} },
-                LDFLAGS          => { value => qq{ -L$install_path/lib},     how => q{append} },
+                CPPFLAGS         => { value => qq{-I$install_path/include}, how => q{append} },
+                LDFLAGS          => { value => qq{-L$install_path/lib},     how => q{append} },
             },
             skip_if            => sub { 0 },    # if true and --force is not used, unilaterally skips the run step
             precondition_check => sub { 1 },    # just a "1" indicates no checking is done
@@ -579,7 +586,7 @@ sub get_steps {
             # augment existing %ENV (cumulative) - this assumes that perlbrew is installed in $HOME and we're
             # using perl-5.28.2
             export_ENV => {
-                PATH             => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/bin},                          how => q{prepend} },
+                PATH             => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
                 PERLBREW_PERL    => { value => q{perl-5.28.2},                                                          how => q{replace} },
                 PERLBREW_MANPATH => { value => qq{$home/perl5/perlbrew/perls/perl-5.28.2/man},                          how => q{prepend} },
                 PERLBREW_PATH    => { value => qq{$home/perl5/perlbrew/bin:$home/perl5/perlbrew/perls/perl-5.28.2/bin}, how => q{prepend} },
@@ -720,9 +727,24 @@ be specificed as,
 
    --skip-steps=perl,openmpi,hdf5-netcdf
 
-To get the list of keys, use the C<--list-keys> option.
+To get the list of keys, use the C<--list-keys> option. This option is not
+compaitble with C<--run-steps>. C<--force> overrides it.
 
-=item C<--update-shell>
+=item C<--run-steps>
+
+This flag is for really for debugging so that one may target a specific step,
+it is not meant for the general run case of building up the ASGS environment;
+asgs-brew.pl is meant to be run fully. It accepts a comma delimited list
+of run step keys (no spaces) to run. For example, if one wished to run
+the C<perl>, C<openmpi>, and C<hdf5-netcdf> steps, then the flag would be
+specified as,
+
+   --run-steps=perl,openmpi,hdf5-netcdf
+
+To get the list of keys, use the C<--list-keys> option. This option is not
+compatibale with C<--skip-steps>. C<--force> overrides it.
+
+=item C<--setup-env>
 
 Runs through each step, but only sets up the environment that is specified
 (if it is specified).  It then prints to STDOUT the list of variables and
@@ -731,7 +753,8 @@ their values in a way that is suitable to be used in a bash script.
 =item C<--force>
 
 If used, the C<skip_if> defined for a step (if defined) is not
-run. C<--skip-steps> is checked before C<--force> and therefore overrides it.
+run. C<--skip-steps> dn C<--run-steps> are checked before C<--force> and
+therefore overrides them.
 
 =item C<--home>
 
