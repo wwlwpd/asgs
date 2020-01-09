@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ ! -d $HOME/asgs ]; then
   git clone https://github.com/jasonfleming/asgs.git
@@ -13,7 +13,7 @@ echo "hatteras       - Hatteras (RENCI)"
 echo "supermike      - Supermike (LSU)"
 echo "queenbee       - Queenbee (LONI)"
 echo "supermic       - SuperMIC (LSU HPC)"
-echo "lonestar       - Lonestar (TACC)"
+echo "lonestar5      - Lonestar (TACC)"
 echo "stampede2      - Stampede2 (TACC)"
 echo "frontera       - Frontera (TACC)"
 echo "desktop        - desktop"
