@@ -302,7 +302,7 @@ set() {
 
 show() {
   if [ -z "${1}" ]; then
-    echo "'set' requires 1 argument - parameter"
+    echo "'show' requires 1 argument - parameter"
     return 
   fi
   case "${1}" in
@@ -317,7 +317,7 @@ show() {
     if [ -n "${EDITOR}" ]; then
       echo "EDITOR is set to '${EDITOR}'"
     else
-      echo "EDITOR is not set to anything. Try, 'set config vi' first"
+      echo "EDITOR is not set to anything. Try, 'set config vim' first"
     fi
     ;;
   instancename)
@@ -325,6 +325,13 @@ show() {
       echo "INSTANCENAME is set to '${INSTANCENAME}'"
     else
       echo "INSTANCENAME is not set to anything. Have you set the config file yet?"
+    fi
+    ;;
+  propertiesfile)
+    if [ -n "${PROPERTIESFILE}" ]; then
+      echo "PROPERTIESFILE is set to '${PROPERTIESFILE}'"
+    else
+      echo "PROPERTIESFILE is not set to anything. Does properties file file exist?" 
     fi
     ;;
   rundir)
@@ -369,7 +376,7 @@ show() {
       echo "WORK is not set to anything. Try, 'set config /path/to/work' first"
     fi
     ;;
-  *) echo "'show' requires one of the supported parameters: 'config', 'editor', 'rundir', 'scratchdir', 'scriptdir',"
+  *) echo "'show' requires one of the supported parameters: 'config', 'editor', 'propertiesfile', 'rundir', 'scratchdir', 'scriptdir',"
      echo "'statefile', 'syslog', or 'workdir'"
     ;;
   esac 
