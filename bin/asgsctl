@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+
+# This file is part of the ADCIRC Surge Guidance System (ASGS).
+#
+# The ASGS is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ASGS is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with the ASGS.  If not, see <http://www.gnu.org/licenses/>.
+#----------------------------------------------------------------
+
+# This script manages "touch" files that ./asgs_main.sh watches to control
+# various aspects of it's operation. It is meant to run inside of an asgsh
+# instance and assumes the existence of various profile-specific variables
+# that define a currently running instance of ASGS
+
+if [ -z "$_ASGSH_PID" ]; then
+  echo "'$0' must be run inside of asgsh. Please run 'asgsh' and try again."
+  exit 1
+fi
+
+if [[ -z "$RUNDIR" || ! -d "$RUNDIR" ]]; then
+  echo "No RUNDIR has been found for '$_ASGSH_CURRENT_PROFILE'. Run 'rl' to reload the profile or"
+  echo "if asgs has not been 'run' for this profile yet, try '$0' again once it has been."
+  exit 1
+fi
+
+# this script implements the management of touchfiles that can be used by
+# asgsh_main.sh to do one of the following:
+#
+#  status   (default, reports a concise and useful status of asgs_main.sh)
+#  pause    (at the next easible opportunity, pause asgs_main.sh)
+#  resume   (if paused) 
+#  restart  (effectively, re-read config file at the highest level while maintaining
+#           as much of the current state as possible at the next feasible opporunity)
+#  shutdown (gracefully, i.e., allow current run to finish then quit)
+#  kill     (exit immediate and remove all running/pending batch jobs from the job queue)
+
+# Communication protocol with asgs_main.sh is described in each case statement below
+
+CMD=${1:-status}
+
+# used by many commands below, if asgs_main.sh is not running (relying
+# on existence of $RUNDIR/asgs_main.pid), exit asgsctl without doing
+# anything
+_get_status_or_exit() {
+  if [ -e $RUNDIR/asgs_main.pid ]; then
+    cat $RUNDIR/asgs_main.pid
+  else 
+    echo "asgs_main.sh is not running ('$RUNDIR/asgs_main.pid' doesn't exist)"
+    exit
+  fi 
+}
+
+STATUS=$RUNDIR/.asgs.status
+PAUSE=$RUNDIR/.asgs.pause
+RESTART=$RUNDIR/.asgs.restart
+SHUTDOWN=$RUNDIR/.asgs.shutdown_gracefully
+KILL=$RUNDIR/.asgs.shutdown_kill
+
+_check_for_confusion() {
+  _found=0
+  if [ -e "$PAUSE" ]; then
+    echo "Found 'pause' file, '$PAUSE'"
+    _found=$(($_found + 1))
+  fi
+  if [ -e "$RESTART" ]; then
+    echo "Found 'restart' file, '$RESTART'"
+    _found=$(($_found + 1))
+  fi
+  if [ -e "$SHUTDOWN" ]; then
+    echo "Found 'shutdown' file, '$SHUTDOWN'"
+    _found=$(($_found + 1))
+  fi
+  if [ -e "$KILL" ]; then
+    echo "Found 'kill' file, '$KILL'"
+    _found=$(($_found + 1))
+  fi
+  if [ $_found -gt 1 ]; then
+    echo "Warning: found more than one 'touchfile', this might confuse asgs_main.sh"
+    echo "To delete all, run: '$0 clear'"
+  fi 
+}
+
+# exit here if asgs_main.sh is not running
+PID=$(_get_status_or_exit)
+_check_for_confusion
+
+case "$CMD" in
+  clear)
+    # delete all potential status files, useful to avoid a situation confusing
+    # for asgs_main.sh
+    rm -vf $PAUSE    2> /dev/null
+    rm -vf $RESTART  2> /dev/null
+    rm -vf $SHUTDOWN 2> /dev/null
+    rm -vf $KILL     2> /dev/null
+    ;;
+  status)
+    echo "asgs_main.sh is running as pid $PID"
+    # look for other touch files
+  ;;
+  pause)
+    # we write a touch file here (doesn't matter if it's already written)
+    touch $PAUSE
+    # asgs_main.sh must detect this file and pause
+    # to 'resume' asgs_main.sh, remove the touch file using the "resume" command
+  ;;
+  resume)
+    if [ -e "$PAUSE" ]; then
+      rm $PAUSE
+    else
+      echo "Can't find '$PAUSE' file".
+      # report status
+      $0 status  
+    fi
+  ;;
+  restart)
+    # we write touch file here
+    touch $RESTART
+    # asgs_main.sh detects it, handles restart, then removes the file itself
+  ;;
+  shutdown)
+    # we write touch file here
+    touch $SHUTDOWN
+    # asgs_main.sh detects it, handles shutdown, then removes the file itself
+  ;;
+  kill)
+    # we write touch file here
+    touch $KILL
+    # asgs_main.sh detects it, handles hard kill, then removes the file itself
+  ;;
+ *)
+  ;;
+esac

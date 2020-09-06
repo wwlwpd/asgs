@@ -565,6 +565,7 @@ sub get_steps {
         push @all_paths, ( qq{$asgs_install_path/bin}, qq{$scriptdir/cloud/general} );
         foreach my $dir (
             qw[
+            bin
             cloud/general
             config
             config/tests

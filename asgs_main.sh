@@ -29,6 +29,10 @@
 #                B E G I N   F U N C T I O N S
 #####################################################################
 #
+
+# make asgs_run.sh pid available in all child processes
+_ASGS_MAIN_PID=$$
+
 echoHelp()
 { clear
   echo "@@@ Help @@@"
@@ -1957,10 +1961,26 @@ else
 fi
 
 # see if the storm directory already exists in the scratch space
-if [ ! -d $RUNDIR ]; then
+if [ ! -d "$RUNDIR" ]; then
     # -p says make the entire path tree if intermediate dirs do not exist
-    mkdir -p $RUNDIR #
+    mkdir -p "$RUNDIR" #
+    logMessage "$THIS: Created '$RUNDIR' "
+else
+    logMessage "$THIS: WARNING - '$RUNDIR' exists already."
 fi
+
+# touch pid file
+_ASGS_PID_FILE=$RUNDIR/asgs_main.pid
+logMessage "$THIS: writing pid file to '$_ASGS_PID_FILE'"
+if [ ! -e "$_ASGS_PID_FILE" ]; then
+  echo $$ > $_ASGS_PID_FILE
+  logMessage "$THIS: pid file to '$_ASGS_PID_FILE' has been written"
+else
+  PID=$(cat $_ASGS_PID_FILE)
+  logMessage "$THIS: FATAL - pid '$_ASGS_PID_FILE' already exists. Is asgs_main.sh running already (contains pid: $PID)? Exiting..."
+  exit 1
+fi
+
 logMessage                                           "$THIS: The ADCIRC Surge/Spill Guidance System is activated."
 RMQMessage "INFO" "$CURRENT_EVENT" "$THIS" "$CURRENT_STATE" "The ADCIRC Surge/Spill Guidance System is activated."
 
@@ -1989,7 +2009,6 @@ RMQMessage "INFO" "$CURRENT_EVENT" "$THIS" "$CURRENT_STATE" "ASGS state file is 
 #
 checkDirExistence $INPUTDIR "directory for input files"
 checkDirExistence $OUTPUTDIR "directory for post processing scripts"
-#checkDirExistence $SCRIPTDIR/PERL "directory for the Date::Pcalc perl module"
 #
 if [[ $QUEUESYS = serial ]]; then
    checkFileExistence $ADCIRCDIR "ADCIRC serial executable" adcirc
